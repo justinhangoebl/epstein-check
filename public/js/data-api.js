@@ -3,10 +3,10 @@
 
 const DOJ_API = {
   baseUrl: 'https://www.justice.gov/multimedia-search',
-  // Our own worker proxy (uses Browser Rendering to bypass Akamai)
-  selfProxy: '/api/proxy?url=',
-  // External fallback that works via Go TLS fingerprint
-  externalProxy: 'https://api.cors.lol/?url=',
+  // Fast external CORS proxy (Go TLS fingerprint bypasses Akamai)
+  corsProxy: 'https://api.cors.lol/?url=',
+  // Self-hosted fallback using CF Browser Rendering (real headless Chrome)
+  browserProxy: '/api/proxy?url=',
   pageSize: 20
 };
 
@@ -14,13 +14,10 @@ const DOJ_API = {
  * Search DOJ Epstein files via the multimedia-search endpoint.
  *
  * Proxy strategy (in order):
- *  1. Our own CF Worker proxy (/api/proxy) — uses Cloudflare Browser
- *     Rendering (real headless Chrome) to bypass Akamai.
- *  2. cors.lol — external Go-based CORS proxy (Akamai doesn't flag
- *     Go's TLS fingerprint).
- *
- * If the worker doesn't have Browser Rendering enabled yet, its
- * plain fetch will get Akamai-blocked (403) and we auto-fallback.
+ *  1. cors.lol — fast (~200ms), Go TLS passes Akamai.
+ *  2. Our CF Worker (/api/proxy) — slower (~2-5s) but self-hosted.
+ *     Uses Cloudflare Browser Rendering (real headless Chrome).
+ *     Activated when cors.lol is rate-limited (429) or down.
  *
  * @param {string} query - search keywords
  * @param {number} [page=1] - 1-based page index
@@ -34,28 +31,27 @@ async function searchDOJ(query, page = 1) {
   const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
 
   // encodeURIComponent so the target's ?/& don't bleed into proxy params
-  const selfUrl = `${DOJ_API.selfProxy}${encodeURIComponent(target)}`;
-  const externalUrl = `${DOJ_API.externalProxy}${encodeURIComponent(target)}`;
+  const corsUrl = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
+  const browserUrl = `${DOJ_API.browserProxy}${encodeURIComponent(target)}`;
 
   try {
-    // Try our own proxy first (works if Browser Rendering is enabled)
+    // 1) Try cors.lol first — fast
     let response;
     try {
-      response = await fetch(selfUrl);
-      // Detect Akamai block: 403 or HTML response when we expect JSON
-      const ct = response.headers.get('content-type') || '';
-      if (response.status === 403 || (response.ok && !ct.includes('json'))) {
-        console.warn('Self-proxy blocked by Akamai, falling back to external proxy');
+      response = await fetch(corsUrl);
+      // If rate-limited or down, fall back
+      if (response.status === 429 || response.status >= 500) {
+        console.warn(`cors.lol returned ${response.status}, falling back to Browser Rendering`);
         response = null;
       }
     } catch (e) {
-      console.warn('Self-proxy failed:', e.message);
+      console.warn('cors.lol unreachable:', e.message);
       response = null;
     }
 
-    // Fallback to external proxy
+    // 2) Fallback: our self-hosted Browser Rendering proxy
     if (!response) {
-      response = await fetch(externalUrl);
+      response = await fetch(browserUrl);
     }
 
     if (!response.ok) throw new Error(`DOJ API error: ${response.status}`);
