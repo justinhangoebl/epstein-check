@@ -41,10 +41,13 @@ async function handleDojSearch(request) {
   const dojUrl = `https://www.justice.gov/multimedia-search?keys=${encodeURIComponent(keys)}&page=${page}`;
 
   try {
+    // justice.gov blocks non-browser User-Agents (returns 403)
     const resp = await fetch(dojUrl, {
       headers: {
-        'User-Agent': 'EpsteinFileSearch/1.0',
-        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/html, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.justice.gov/epstein',
       },
     });
 
