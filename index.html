@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epstein Files Search - Searchable Database of Public Records</title>
+    <meta name="description" content="Search the Epstein files and flight logs. Comprehensive, searchable database of publicly available court documents and records.">
+    <meta name="keywords" content="Epstein files, Epstein documents, flight logs, Jeffrey Epstein, court records, public documents">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Epstein Files</h1>
+            <p class="subtitle">Searchable Public Records Database</p>
+        </div>
+    </header>
+
+    <main class="search-container">
+        <div class="search-box-wrapper">
+            <span class="search-icon">⌕</span>
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search by name, organization, or location..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRecords">0</div>
+                <div class="stat-label">Total Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="resultsCount">0</div>
+                <div class="stat-label">Search Results</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="documentsCount">0</div>
+                <div class="stat-label">Source Documents</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label class="filter-label" for="categoryFilter">Category</label>
+                <select id="categoryFilter">
+                    <option value="all">All Categories</option>
+                    <option value="flight-log">Flight Logs</option>
+                    <option value="court-document">Court Documents</option>
+                    <option value="witness">Witness Testimony</option>
+                    <option value="associate">Known Associate</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="sortBy">Sort By</label>
+                <select id="sortBy">
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="mentions-desc">Most Mentions</option>
+                    <option value="mentions-asc">Least Mentions</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="results"></div>
+    </main>
+
+    <footer>
+        <p>This database contains publicly available information from court documents and records.</p>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem;"><strong>Disclaimer:</strong> There is no guarantee for the correctness of this information. Use at your own discretion.</p>
+        <p>If you believe any information is inaccurate, please contact: <a href="mailto:hangoebl.j@gmail.com">hangoebl.j@gmail.com</a></p>
+        <p>Data sources: <a href="#" target="_blank">Court Records</a> | <a href="#" target="_blank">Public Documents</a> | <a href="#" target="_blank">Flight Logs</a></p>
+        <p style="margin-top: 1rem; font-size: 0.85rem;">Last updated: January 2025</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="data-api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
