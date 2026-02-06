@@ -3,13 +3,13 @@
 
 const DOJ_API = {
   baseUrl: 'https://www.justice.gov/multimedia-search',
-  corsProxy: 'https://corsproxy.io/?url=',
+  corsProxy: 'https://api.cors.lol/?url=',
   pageSize: 20
 };
 
 /**
  * Search DOJ Epstein files via the multimedia-search endpoint.
- * Uses corsproxy.io from the browser because justice.gov
+ * Uses api.cors.lol from the browser because justice.gov
  * does not send CORS headers and blocks server-side requests.
  *
  * @param {string} query - search keywords
@@ -22,7 +22,7 @@ async function searchDOJ(query, page = 1) {
   }
 
   const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
-  const url = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
+  const url = `${DOJ_API.corsProxy}${target}`;
 
   try {
     const response = await fetch(url);
