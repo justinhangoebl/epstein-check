@@ -2,7 +2,7 @@
 
 Cross-reference any public figure against 115,000+ Epstein court documents from the DOJ EFTA release. Built with vanilla HTML, CSS, and JavaScript — no frameworks, no build tools.
 
-**Live:** [epsteinfilesearch.com](https://epsteinfilesearch.com)
+**Live:** [epstein-check.org](https://epstein-check.org)
 
 ## Pages
 
