@@ -14,32 +14,6 @@
 
 ---
 
-### Option 2: Vercel (Fast & Professional)
-1. Install Vercel CLI: `npm i -g vercel`
-2. In the project folder: `vercel`
-3. Follow prompts (just press Enter for defaults)
-4. Done! Site is live
-
-**Cost**: FREE for personal projects
-**Setup time**: 3 minutes
-**Perfect for**: Developers
-
----
-
-### Option 3: GitHub Pages (Free hosting from GitHub)
-1. Create GitHub account at [github.com](https://github.com)
-2. Create new repository (name it anything, e.g., "epstein-search")
-3. Upload all files to the repository
-4. Go to Settings → Pages
-5. Under "Source", select "main" branch → Save
-6. Site will be live at: `yourusername.github.io/epstein-search`
-
-**Cost**: FREE
-**Setup time**: 5 minutes
-**Perfect for**: Long-term free hosting
-
----
-
 ### Option 4: Cloudflare Pages (Global CDN, super fast)
 1. Go to [pages.cloudflare.com](https://pages.cloudflare.com)
 2. Sign up (free)
@@ -51,21 +25,6 @@
 **Setup time**: 4 minutes
 **Perfect for**: Best performance worldwide
 
----
-
-## Domain Name Recommendations
-
-### Top Choices (Check availability)
-1. **epsteinfilesearch.com** ⭐ BEST - Direct, clear intent
-2. **searchepsteinfiles.com** - Action-oriented
-3. **epsteinrecords.org** - Authoritative (.org)
-4. **epsteindatabase.com** - Alternative
-5. **epsteinfileslookup.com** - Descriptive
-
-### Where to Buy Domains
-- **Namecheap** - Usually cheapest (~$9/year)
-- **Google Domains** - Simple, clean interface
-- **Cloudflare** - $8-10/year, includes free privacy
 
 ### Connecting Custom Domain
 
@@ -74,12 +33,6 @@
 2. In Netlify: Site Settings → Domain Management → Add custom domain
 3. Follow Netlify's DNS instructions
 4. Wait 24-48 hours for propagation
-
-**If using Vercel:**
-1. In Vercel dashboard, go to your project
-2. Settings → Domains → Add domain
-3. Follow verification steps
-4. Done!
 
 ---
 
