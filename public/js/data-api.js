@@ -4,6 +4,7 @@
 const DOJ_API = {
   baseUrl: 'https://www.justice.gov/multimedia-search',
   corsProxy: '/api/proxy?url=',
+  corsProxyFallback: 'https://api.cors.lol/?url=',
   pageSize: 20
 };
 
@@ -12,6 +13,7 @@ const DOJ_API = {
  * Uses our own Cloudflare Worker CORS proxy (/api/proxy) because
  * justice.gov does not send CORS headers and blocks direct
  * browser requests via Akamai bot protection.
+ * Falls back to cors.lol if the primary proxy is blocked.
  *
  * @param {string} query - search keywords
  * @param {number} [page=1] - 1-based page index
@@ -23,10 +25,20 @@ async function searchDOJ(query, page = 1) {
   }
 
   const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
-  const url = `${DOJ_API.corsProxy}${target}`;
+
+  // encodeURIComponent so the target's own ?/& don't bleed into proxy params
+  const primaryUrl = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
+  const fallbackUrl = `${DOJ_API.corsProxyFallback}${encodeURIComponent(target)}`;
 
   try {
-    const response = await fetch(url);
+    let response = await fetch(primaryUrl);
+
+    // If our proxy got Akamai-blocked (403), fall back to cors.lol
+    if (response.status === 403) {
+      console.warn('Primary proxy blocked (403), falling back to cors.lol');
+      response = await fetch(fallbackUrl);
+    }
+
     if (!response.ok) throw new Error(`DOJ API error: ${response.status}`);
 
     const data = await response.json();

@@ -13,13 +13,29 @@ const RATE_WINDOW_SEC = 60;
 // Max response body we'll relay (10 MB)
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
-// Headers we send upstream so the target sees a normal browser
+// Headers we send upstream so the target sees a real Chrome browser.
+// Akamai's bot detection checks Sec-Fetch-*, Referer, Accept, and header
+// ordering — all of these must be present and realistic.
 const BROWSER_HEADERS = {
   'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  Accept: '*/*',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Accept-Encoding': 'gzip, deflate, br',
+  'Accept-Encoding': 'gzip, deflate, br, zstd',
+  'Cache-Control': 'no-cache',
+  Pragma: 'no-cache',
+  // Sec-Fetch headers tell the server this is a top-level navigation
+  // from a browser — without these Akamai immediately blocks.
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Upgrade-Insecure-Requests': '1',
+  Priority: 'u=0, i',
 };
 
 // CORS headers applied to every proxy response
@@ -94,9 +110,10 @@ async function handleProxy(request) {
     return jsonError('Rate limit exceeded — try again shortly', 429);
   }
 
-  // Extract target URL
-  const url = new URL(request.url);
-  const targetRaw = url.searchParams.get('url');
+  // Extract the target URL from the raw query string so we don't
+  // mangle encoded characters.  The client sends ?url=<encoded-url>.
+  const reqUrl = new URL(request.url);
+  const targetRaw = reqUrl.searchParams.get('url');
   const targetURL = prepareURL(targetRaw);
 
   if (!targetURL) {
@@ -104,11 +121,19 @@ async function handleProxy(request) {
   }
 
   try {
-    // Build the upstream request with browser-like headers so Akamai
-    // and similar bot-protection layers let us through.
+    // Build upstream headers — start with the browser template,
+    // then add a Referer matching the target origin so Akamai
+    // sees a same-site navigation.
+    const targetOrigin = new URL(targetURL).origin;
+    const headers = {
+      ...BROWSER_HEADERS,
+      Referer: targetOrigin + '/',
+      Origin: targetOrigin,
+    };
+
     const upstreamReq = new Request(targetURL, {
       method: 'GET',
-      headers: BROWSER_HEADERS,
+      headers,
       redirect: 'follow',
     });
 
