@@ -3,14 +3,15 @@
 
 const DOJ_API = {
   baseUrl: 'https://www.justice.gov/multimedia-search',
-  corsProxy: 'https://api.cors.lol/?url=',
+  corsProxy: '/api/proxy?url=',
   pageSize: 20
 };
 
 /**
  * Search DOJ Epstein files via the multimedia-search endpoint.
- * Uses api.cors.lol from the browser because justice.gov
- * does not send CORS headers and blocks server-side requests.
+ * Uses our own Cloudflare Worker CORS proxy (/api/proxy) because
+ * justice.gov does not send CORS headers and blocks direct
+ * browser requests via Akamai bot protection.
  *
  * @param {string} query - search keywords
  * @param {number} [page=1] - 1-based page index
