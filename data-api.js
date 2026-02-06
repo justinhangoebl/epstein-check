@@ -94,7 +94,7 @@ async function checkPersonInFiles(name) {
     const { score, reason } = scoreRelevance(name, result);
 
     let status;
-    if (score >= 60) {
+    if (score >= 50) {
       status = 'found';       // red — genuinely present
     } else if (score > 0) {
       status = 'incidental';  // orange — mentioned but likely not relevant
@@ -121,52 +121,78 @@ async function checkPersonInFiles(name) {
  * Score how relevant the DOJ search results are to the person.
  * Returns 0-100 where higher = more likely genuinely in the files.
  *
- * Signals checked:
- * - Number of unique files (more files = stronger signal)
- * - Total hits (more mentions = stronger)
- * - Whether the person's name parts appear in highlighted <em> tags
- * - Whether highlights contain spam/ad/newsletter indicators
- * - Relevance score from the search engine
+ * Signals:
+ *  1. Volume — unique files AND total hit count (two separate axes)
+ *  2. Name in <em> highlights — confirms the search engine matched
+ *     the person, not some unrelated term
+ *  3. Substantive-context boost — legal / case language in highlights
+ *  4. Spam / incidental penalty — newsletter, music, marketing noise
+ *
+ * Threshold (in checkPersonInFiles):
+ *   score >= 50 → "found" (red)
+ *   1-49        → "incidental" (orange)
+ *   0           → "clear" (green)
  */
 function scoreRelevance(name, result) {
   let score = 0;
   const reasons = [];
   const nameParts = name.toLowerCase().split(/\s+/).filter(p => p.length > 2);
 
-  // 1. Volume signals
-  const files = result.uniqueFiles || 0;
+  // ── 1. Volume signals ───────────────────────────────────────────────
   const hits = result.totalHits || 0;
 
-  if (files >= 10) { score += 40; reasons.push(`${files} unique files`); }
-  else if (files >= 5) { score += 30; reasons.push(`${files} unique files`); }
-  else if (files >= 3) { score += 20; reasons.push(`${files} files`); }
-  else if (files >= 2) { score += 10; reasons.push(`${files} files`); }
-  else { score += 5; reasons.push('single file'); }
+  // The DOJ aggregation may come back as 0 when unavailable.
+  // Fall back to counting unique file names in the returned page of hits.
+  let files = result.uniqueFiles || 0;
+  if (files === 0 && result.hits.length > 0) {
+    const uniqueNames = new Set(result.hits.map(h => h.fileName).filter(Boolean));
+    files = uniqueNames.size || result.hits.length;
+  }
 
-  // 2. Check highlighted content for name match
+  // a) Unique-file score (max 30)
+  if (files >= 10)      { score += 30; reasons.push(`${files} unique files`); }
+  else if (files >= 5)  { score += 22; reasons.push(`${files} unique files`); }
+  else if (files >= 3)  { score += 15; reasons.push(`${files} files`); }
+  else if (files >= 1)  { score += 8;  reasons.push(`${files} file(s)`); }
+
+  // b) Total-hits score (max 25) — independent axis from file count
+  if (hits >= 50)       { score += 25; reasons.push(`${hits} total mentions`); }
+  else if (hits >= 20)  { score += 18; reasons.push(`${hits} mentions`); }
+  else if (hits >= 10)  { score += 12; reasons.push(`${hits} mentions`); }
+  else if (hits >= 5)   { score += 8;  reasons.push(`${hits} mentions`); }
+  else if (hits >= 2)   { score += 4;  reasons.push(`${hits} mentions`); }
+
+  // ── 2. Name in highlighted <em> tags ────────────────────────────────
   const allHighlights = result.hits
     .flatMap(h => h.highlights || [])
     .join(' ')
     .toLowerCase();
 
-  // Extract text inside <em> tags — these are the actual matched terms
+  // Text inside <em> tags is what the search engine actually matched
   const emMatches = allHighlights.match(/<em>([^<]+)<\/em>/g) || [];
   const emText = emMatches.map(m => m.replace(/<\/?em>/g, '').toLowerCase()).join(' ');
 
-  // Check if the person's name parts appear in the emphasized text
   const namePartsInEm = nameParts.filter(p => emText.includes(p));
   if (namePartsInEm.length === nameParts.length) {
-    score += 30; // Full name match in highlights
+    score += 25;
     reasons.push('full name in highlights');
   } else if (namePartsInEm.length > 0) {
-    score += 15; // Partial match
+    score += 12;
     reasons.push('partial name in highlights');
   } else {
-    score -= 20; // Name not in highlighted text at all
+    score -= 15;
     reasons.push('name not in highlighted terms');
   }
 
-  // 3. Check for spam / incidental content indicators
+  // Also check plain highlight text for the full name as a phrase
+  const plainHighlights = allHighlights.replace(/<[^>]*>/g, '');
+  const fullNameLower = name.toLowerCase();
+  if (plainHighlights.includes(fullNameLower)) {
+    score += 10;
+    reasons.push('full name in context');
+  }
+
+  // ── 3. Spam / incidental-content penalty ────────────────────────────
   const spamKeywords = [
     'unsubscribe', 'newsletter', 'subscription', 'advertisement',
     'click here', 'opt out', 'mailing list', 'napster', 'spotify',
@@ -175,32 +201,37 @@ function scoreRelevance(name, result) {
     'breaking news', 'daily digest', 'automated', 'no-reply',
     'noreply', 'marketing', 'sponsored'
   ];
-  const plainHighlights = allHighlights.replace(/<[^>]*>/g, '');
   const spamHits = spamKeywords.filter(kw => plainHighlights.includes(kw));
-  if (spamHits.length >= 2) {
-    score -= 30;
+  if (spamHits.length >= 3) {
+    score -= 35;
     reasons.push(`spam indicators: ${spamHits.slice(0, 3).join(', ')}`);
+  } else if (spamHits.length >= 2) {
+    score -= 25;
+    reasons.push(`spam indicators: ${spamHits.join(', ')}`);
   } else if (spamHits.length === 1) {
-    score -= 15;
+    score -= 12;
     reasons.push(`possible spam: ${spamHits[0]}`);
   }
 
-  // 4. Legal/case-related content boosts relevance
+  // ── 4. Legal / case-related content boost ───────────────────────────
   const legalKeywords = [
     'deposition', 'testimony', 'subpoena', 'flight log', 'passenger',
     'witness', 'affidavit', 'indictment', 'grand jury', 'complaint',
-    'massage', 'victim', 'minor', 'underage', 'recruit'
+    'massage', 'victim', 'minor', 'underage', 'recruit', 'sex',
+    'trafficking', 'abuse', 'alleged', 'accused', 'defendant',
+    'plaintiff', 'court', 'trial', 'counsel', 'attorney',
+    'sealed', 'unsealed', 'exhibit', 'sworn'
   ];
   const legalHits = legalKeywords.filter(kw => plainHighlights.includes(kw));
-  if (legalHits.length >= 2) {
+  if (legalHits.length >= 3) {
     score += 20;
-    reasons.push(`legal context: ${legalHits.slice(0, 3).join(', ')}`);
-  } else if (legalHits.length === 1) {
+    reasons.push(`legal context: ${legalHits.slice(0, 4).join(', ')}`);
+  } else if (legalHits.length >= 1) {
     score += 10;
-    reasons.push(`legal context: ${legalHits[0]}`);
+    reasons.push(`legal context: ${legalHits.join(', ')}`);
   }
 
-  // Clamp
+  // Clamp 0-100
   score = Math.max(0, Math.min(100, score));
 
   return { score, reason: reasons.join('; ') };

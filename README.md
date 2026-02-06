@@ -1,265 +1,82 @@
-# Epstein Files Search - Public Records Database
+# Epstein Files Search
 
-A professional, searchable database of publicly available Epstein files, court documents, and flight logs. Built with pure HTML, CSS, and JavaScript for maximum performance and ease of deployment.
+Cross-reference any public figure against 115,000+ Epstein court documents from the DOJ EFTA release. Built with vanilla HTML, CSS, and JavaScript — no frameworks, no build tools.
 
-## Features
+**Live:** [epsteinfilesearch.com](https://epsteinfilesearch.com)
 
-### Core Functionality
-- ⚡ **Instant Search** - Client-side search with real-time results
-- 🎯 **Advanced Filtering** - Filter by category (Flight Logs, Court Documents, Witnesses, Associates)
-- 📊 **Multiple Sort Options** - Sort by name or number of mentions
-- 💡 **Smart Highlighting** - Search terms highlighted in results
-- 📱 **Fully Responsive** - Works perfectly on mobile, tablet, and desktop
-- ⌨️ **Keyboard Shortcuts** - `Cmd/Ctrl + K` to focus search, `ESC` to clear
-- 🎨 **Distinctive Design** - Brutalist-editorial aesthetic with smooth animations
+## Pages
 
-### Technical Features
-- Pure vanilla JavaScript (no frameworks required)
-- Zero dependencies
-- SEO optimized with semantic HTML
-- Fast load times (<50KB total)
-- Accessible (WCAG compliant)
-- Works offline after first load
+| Page | Description |
+|------|-------------|
+| **People Search** (`index.html`) | Search for anyone via DBpedia and cross-reference against DOJ files. Cards turn red (found), orange (incidental), or green (clear). |
+| **Document Search** (`documents.html`) | Full-text search across DOJ Epstein files with pagination and highlighted results. |
+| **Checker** (`checker.html`) | Look up a single person with autocomplete and get a detailed breakdown with sample documents. |
 
-## Quick Start
+## How It Works
 
-### Local Development
-1. Clone or download this repository
-2. Open `index.html` in any modern browser
-3. No build process required!
+1. **People are looked up via [DBpedia](https://www.dbpedia.org)** — this confirms they are real, known public figures.
+2. **Each name is cross-referenced against the [DOJ Epstein files](https://www.justice.gov/epstein)** — the justice.gov multimedia-search API.
+3. **A relevance algorithm scores each match** to separate genuine mentions from incidental ones (e.g. a celebrity name appearing in a spam email attachment).
 
-### Testing Locally
-```bash
-# Option 1: Python
-python -m http.server 8000
+### Relevance Scoring
 
-# Option 2: Node.js
-npx http-server
+The algorithm checks multiple signals:
+- **Volume** — unique file count and total mentions
+- **Name in highlights** — whether the search engine actually matched the person's name
+- **Legal context** — presence of terms like *deposition*, *testimony*, *subpoena*, *victim*
+- **Spam detection** — presence of terms like *unsubscribe*, *newsletter*, *napster*, *playlist*
 
-# Option 3: PHP
-php -S localhost:8000
-```
+Score ≥ 50 → **found** (red) · 1–49 → **incidental** (orange) · 0 → **clear** (green)
 
-Then visit `http://localhost:8000`
+## Tech Stack
 
-## Deployment
-
-### Option 1: Static Hosting (Recommended)
-
-#### Netlify (Free, Easiest)
-1. Sign up at [netlify.com](https://netlify.com)
-2. Drag and drop the folder to Netlify
-3. Your site is live in seconds!
-4. Custom domain: Site Settings → Domain Management
-
-#### Vercel (Free, Fast)
-```bash
-npm i -g vercel
-vercel
-```
-
-#### GitHub Pages (Free)
-1. Create a GitHub repository
-2. Upload all files
-3. Settings → Pages → Select branch → Save
-4. Site will be live at `username.github.io/repo-name`
-
-#### Cloudflare Pages (Free, Global CDN)
-1. Sign up at [pages.cloudflare.com](https://pages.cloudflare.com)
-2. Connect your Git repository or upload files
-3. Deploy with one click
-
-### Option 2: Traditional Hosting
-Upload all files to any web host via FTP/SFTP:
-- Bluehost
-- SiteGround
-- HostGator
-- Any shared hosting
-
-## Customization
-
-### Adding More Records
-Edit `data.js` and add entries to the `epsteinDatabase` array:
-
-```javascript
-{
-    id: 21,
-    name: "Person Name",
-    category: "court-document", // or "flight-log", "witness", "associate"
-    mentions: 45,
-    context: "Brief description of how they appear in records",
-    documents: ["Document 1", "Document 2"],
-    locations: ["Location 1", "Location 2"],
-    associations: ["Person 1", "Person 2"],
-    dateRange: "2000-2010",
-    tags: ["Tag1", "Tag2"]
-}
-```
-
-### Styling Changes
-All styling is in `<style>` tag in `index.html`. CSS variables at the top:
-
-```css
-:root {
-    --primary-bg: #0a0a0a;      /* Main background */
-    --secondary-bg: #1a1a1a;     /* Cards background */
-    --accent: #ff3366;           /* Accent color */
-    --text-primary: #ffffff;     /* Main text */
-    --text-secondary: #999999;   /* Secondary text */
-}
-```
-
-## SEO Strategy
-
-### Domain Names (Priority Order)
-1. **epsteinfilesearch.com** - Clear, direct, high search intent
-2. **searchepsteinfiles.com** - Action-oriented, good for voice search
-3. **epsteinrecords.org** - Authoritative, .org credibility
-4. **epsteindatabase.com** - Database-focused
-5. **epsteinfileslookup.com** - Alternative search term
-
-### SEO Implementation Checklist
-
-#### ✅ Already Implemented
-- Semantic HTML5 structure
-- Meta descriptions and keywords
-- Title tag optimization
-- Fast load times
-- Mobile responsive
-- Clean URLs (no parameters needed)
-
-#### 🎯 Recommended Additions
-
-**1. Create sitemap.xml**
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    <url>
-        <loc>https://yoursite.com/</loc>
-        <lastmod>2025-01-15</lastmod>
-        <priority>1.0</priority>
-    </url>
-</urlset>
-```
-
-**2. Create robots.txt**
-```
-User-agent: *
-Allow: /
-Sitemap: https://yoursite.com/sitemap.xml
-```
-
-**3. Add Schema Markup**
-Add this to `<head>` section for rich snippets:
-```html
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Epstein Files Search",
-  "description": "Searchable database of Epstein files and public records",
-  "url": "https://yoursite.com"
-}
-</script>
-```
-
-**4. Open Graph Tags** (for social media)
-```html
-<meta property="og:title" content="Epstein Files Search - Public Records Database">
-<meta property="og:description" content="Search court documents, flight logs, and public records">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://yoursite.com">
-```
-
-### Target Keywords
-- Primary: "epstein files", "epstein documents", "epstein search"
-- Secondary: "epstein flight logs", "epstein court records", "epstein database"
-- Long-tail: "search epstein files", "who is in epstein files", "epstein flight log lookup"
-
-### Content Strategy for SEO
-1. **Blog Section** - Add articles about specific cases or documents
-2. **Individual Pages** - Create detail pages for major figures
-3. **Timeline Page** - Visual timeline of events
-4. **Resources Page** - Links to source documents
-5. **FAQ Page** - Common questions about the files
-
-### LLMSEO (Optimizing for AI Search)
-To rank in ChatGPT, Claude, Perplexity, and other AI search:
-
-1. **Structured Data** - Already using clean JSON database
-2. **Clear Factual Content** - Database provides clear, verifiable info
-3. **Authoritative Sources** - Link to original court documents
-4. **Regular Updates** - Keep data current
-5. **Semantic HTML** - Already implemented
-6. **API Endpoint** (optional) - Create `api/search.json` for AI crawlers
-
-### Analytics Setup
-Add Google Analytics or Plausible Analytics:
-
-```html
-<!-- Before </head> -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
-</script>
-```
+- Vanilla HTML, CSS, JavaScript (ES6+)
+- [DOJ multimedia-search API](https://www.justice.gov/multimedia-search) via [corsproxy.io](https://corsproxy.io)
+- [DBpedia Lookup API](https://lookup.dbpedia.org)
+- Fonts: Space Mono + Crimson Pro (Google Fonts)
+- Brutalist-editorial dark theme
 
 ## File Structure
+
 ```
-epstein-files-search/
-├── index.html          # Main HTML file with embedded CSS
-├── data.js            # Database of records
-├── app.js             # Search and display logic
-├── README.md          # This file
-├── sitemap.xml        # (Create this)
-└── robots.txt         # (Create this)
+├── index.html        # People Search page
+├── documents.html    # Document Search page
+├── checker.html      # Single-person Checker page
+├── app.js            # People Search logic
+├── data-api.js       # DOJ + DBpedia API wrapper, relevance scoring
+├── styles.css        # All styles
+├── sitemap.xml       # Sitemap
+├── robots.txt        # Crawler rules
+├── STYLE_GUIDE.md    # Design system reference
+├── DEPLOYMENT.md     # Deployment notes
+└── LICENSE           # MIT License
 ```
 
-## Browser Support
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+## Run Locally
 
-## Performance
-- Initial load: ~40KB
-- First paint: <500ms
-- Interactive: <1s
-- Perfect Lighthouse scores possible
+```bash
+# any static server works
+python -m http.server 8000
 
-## Legal & Ethical Considerations
-- All data should be from publicly available sources
-- Include proper citations to source documents
-- Add disclaimers about data accuracy
-- Consider privacy implications
-- Provide contact for corrections/removal requests
+# or
+npx http-server
+```
 
-## Future Enhancements
-- [ ] Dark/light mode toggle
-- [ ] Export search results to CSV
-- [ ] Advanced Boolean search
-- [ ] Timeline visualization
-- [ ] Document viewer integration
-- [ ] API for programmatic access
-- [ ] Multilingual support
-- [ ] Print-friendly view
+Then open [http://localhost:8000](http://localhost:8000).
+
+## Deploy
+
+Static files only — works with any host:
+
+- **GitHub Pages** — push to a repo, enable Pages
+- **Netlify / Vercel** — drag and drop or connect repo
+- **Cloudflare Pages** — connect repo, one-click deploy
+- Any web host via FTP/SFTP
+
+## Disclaimer
+
+This tool cross-references publicly available DOJ court records. Appearance in these files does not imply wrongdoing. There is no guarantee for the correctness of this information. Use at your own discretion.
 
 ## License
-MIT License - Feel free to use and modify
 
-## Contributing
-To add data or fix errors:
-1. Edit `data.js`
-2. Ensure data is from public sources
-3. Include document citations
-4. Test thoroughly
-
-## Contact
-For corrections, additions, or removal requests, please contact [your-email]
-
----
-
-**Disclaimer**: This database contains information from publicly available court documents and records. All individuals are presumed innocent unless proven guilty in a court of law. The presence of a name in these records does not imply wrongdoing.
+[MIT](LICENSE)
