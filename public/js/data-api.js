@@ -2,15 +2,16 @@
 // Uses the official justice.gov multimedia-search endpoint
 
 const DOJ_API = {
-  baseUrl: 'https://www.justice.gov/multimedia-search',
-  corsProxy: 'https://corsproxy.io/?url=',
+  // In production (Cloudflare Pages) this hits /api/doj-search which proxies to justice.gov
+  // In local dev you can run `npx wrangler pages dev .` to emulate the function
+  baseUrl: '/api/doj-search',
   pageSize: 20
 };
 
 /**
  * Search DOJ Epstein files via the multimedia-search endpoint.
- * Routed through a CORS proxy because justice.gov does not send
- * Access-Control-Allow-Origin headers.
+ * Proxied through a Cloudflare Pages Function (/api/doj-search)
+ * because justice.gov does not send CORS headers.
  *
  * @param {string} query - search keywords
  * @param {number} [page=1] - 1-based page index
@@ -21,8 +22,7 @@ async function searchDOJ(query, page = 1) {
     return { hits: [], totalHits: 0, uniqueFiles: 0, query: '' };
   }
 
-  const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
-  const url = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
+  const url = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
 
   try {
     const response = await fetch(url);
@@ -309,4 +309,3 @@ function formatDate(isoString) {
     return isoString;
   }
 }
-

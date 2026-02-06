@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+
+# Build artifacts
+dist/
+.cache/
+
+# Env
+.env
+.env.local

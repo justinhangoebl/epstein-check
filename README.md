@@ -31,47 +31,51 @@ Score ≥ 50 → **found** (red) · 1–49 → **incidental** (orange) · 0 → 
 ## Tech Stack
 
 - Vanilla HTML, CSS, JavaScript (ES6+)
-- [DOJ multimedia-search API](https://www.justice.gov/multimedia-search) via [corsproxy.io](https://corsproxy.io)
+- [DOJ multimedia-search API](https://www.justice.gov/multimedia-search) (proxied via Cloudflare Worker)
 - [DBpedia Lookup API](https://lookup.dbpedia.org)
+- Hosted on [Cloudflare Workers](https://workers.cloudflare.com) with static assets
 - Fonts: Space Mono + Crimson Pro (Google Fonts)
 - Brutalist-editorial dark theme
 
-## File Structure
+## Project Structure
 
 ```
-├── index.html        # People Search page
-├── documents.html    # Document Search page
-├── checker.html      # Single-person Checker page
-├── app.js            # People Search logic
-├── data-api.js       # DOJ + DBpedia API wrapper, relevance scoring
-├── styles.css        # All styles
-├── sitemap.xml       # Sitemap
-├── robots.txt        # Crawler rules
-├── STYLE_GUIDE.md    # Design system reference
-├── DEPLOYMENT.md     # Deployment notes
-└── LICENSE           # MIT License
+├── public/                     # Static assets (served by Cloudflare)
+│   ├── index.html              #   People Search page
+│   ├── documents.html          #   Document Search page
+│   ├── checker.html            #   Single-person Checker page
+│   ├── js/
+│   │   ├── app.js              #   People Search logic
+│   │   └── data-api.js         #   DOJ + DBpedia API wrapper, relevance scoring
+│   ├── css/
+│   │   └── styles.css          #   All styles
+│   ├── favicon.ico
+│   ├── favicon.svg
+│   ├── robots.txt
+│   └── sitemap.xml
+├── src/
+│   └── worker.js               # Cloudflare Worker entry point (handles /api/*)
+├── wrangler.jsonc               # Wrangler deployment config
+├── STYLE_GUIDE.md
+├── LICENSE
+└── README.md
 ```
 
 ## Run Locally
 
 ```bash
-# any static server works
-python -m http.server 8000
-
-# or
-npx http-server
+npx wrangler dev
 ```
 
-Then open [http://localhost:8000](http://localhost:8000).
+This starts a local server with the `/api/doj-search` proxy and static assets working just like production.
 
 ## Deploy
 
-Static files only — works with any host:
+```bash
+npx wrangler deploy
+```
 
-- **GitHub Pages** — push to a repo, enable Pages
-- **Netlify / Vercel** — drag and drop or connect repo
-- **Cloudflare Pages** — connect repo, one-click deploy
-- Any web host via FTP/SFTP
+Or connect the repo to Cloudflare — push triggers auto-deploy.
 
 ## Disclaimer
 
