@@ -1250,6 +1250,7 @@ footer .last-updated { font-size: 0.85rem; }
         font-size: 0.75rem;
         line-height: 1.35;
         display: -webkit-box;
+        line-clamp: 3;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
