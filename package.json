@@ -1,0 +1,15 @@
+{
+  "name": "epstein-records",
+  "version": "1.0.0",
+  "description": "Cross-reference any public figure against 115,000+ Epstein court documents from the DOJ EFTA release. Built with vanilla HTML, CSS, and JavaScript — no frameworks, no build tools.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.0.6"
+  }
+}

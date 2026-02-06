@@ -3,17 +3,24 @@
 
 const DOJ_API = {
   baseUrl: 'https://www.justice.gov/multimedia-search',
-  corsProxy: '/api/proxy?url=',
-  corsProxyFallback: 'https://api.cors.lol/?url=',
+  // Our own worker proxy (uses Browser Rendering to bypass Akamai)
+  selfProxy: '/api/proxy?url=',
+  // External fallback that works via Go TLS fingerprint
+  externalProxy: 'https://api.cors.lol/?url=',
   pageSize: 20
 };
 
 /**
  * Search DOJ Epstein files via the multimedia-search endpoint.
- * Uses our own Cloudflare Worker CORS proxy (/api/proxy) because
- * justice.gov does not send CORS headers and blocks direct
- * browser requests via Akamai bot protection.
- * Falls back to cors.lol if the primary proxy is blocked.
+ *
+ * Proxy strategy (in order):
+ *  1. Our own CF Worker proxy (/api/proxy) — uses Cloudflare Browser
+ *     Rendering (real headless Chrome) to bypass Akamai.
+ *  2. cors.lol — external Go-based CORS proxy (Akamai doesn't flag
+ *     Go's TLS fingerprint).
+ *
+ * If the worker doesn't have Browser Rendering enabled yet, its
+ * plain fetch will get Akamai-blocked (403) and we auto-fallback.
  *
  * @param {string} query - search keywords
  * @param {number} [page=1] - 1-based page index
@@ -26,17 +33,29 @@ async function searchDOJ(query, page = 1) {
 
   const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
 
-  // encodeURIComponent so the target's own ?/& don't bleed into proxy params
-  const primaryUrl = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
-  const fallbackUrl = `${DOJ_API.corsProxyFallback}${encodeURIComponent(target)}`;
+  // encodeURIComponent so the target's ?/& don't bleed into proxy params
+  const selfUrl = `${DOJ_API.selfProxy}${encodeURIComponent(target)}`;
+  const externalUrl = `${DOJ_API.externalProxy}${encodeURIComponent(target)}`;
 
   try {
-    let response = await fetch(primaryUrl);
+    // Try our own proxy first (works if Browser Rendering is enabled)
+    let response;
+    try {
+      response = await fetch(selfUrl);
+      // Detect Akamai block: 403 or HTML response when we expect JSON
+      const ct = response.headers.get('content-type') || '';
+      if (response.status === 403 || (response.ok && !ct.includes('json'))) {
+        console.warn('Self-proxy blocked by Akamai, falling back to external proxy');
+        response = null;
+      }
+    } catch (e) {
+      console.warn('Self-proxy failed:', e.message);
+      response = null;
+    }
 
-    // If our proxy got Akamai-blocked (403), fall back to cors.lol
-    if (response.status === 403) {
-      console.warn('Primary proxy blocked (403), falling back to cors.lol');
-      response = await fetch(fallbackUrl);
+    // Fallback to external proxy
+    if (!response) {
+      response = await fetch(externalUrl);
     }
 
     if (!response.ok) throw new Error(`DOJ API error: ${response.status}`);

@@ -1,6 +1,9 @@
 // Cloudflare Worker — serves static assets + self-hosted CORS proxy
-// The proxy replaces the external api.cors.lol dependency so we control
-// everything ourselves and avoid third-party rate limits / outages.
+// The proxy bypasses Akamai bot protection using Cloudflare Browser
+// Rendering (real headless Chrome) and falls back to a plain fetch
+// with browser-like headers if the BROWSER binding isn't available.
+
+import puppeteer from '@cloudflare/puppeteer';
 
 /* ── Configuration ────────────────────────────────────────────────── */
 
@@ -12,6 +15,9 @@ const RATE_WINDOW_SEC = 60;
 
 // Max response body we'll relay (10 MB)
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+// Timeout for browser page navigation (ms)
+const BROWSER_TIMEOUT = 15_000;
 
 // Headers we send upstream so the target sees a real Chrome browser.
 // Akamai's bot detection checks Sec-Fetch-*, Referer, Accept, and header
@@ -98,7 +104,82 @@ function prepareURL(raw) {
 
 /* ── Proxy handler ────────────────────────────────────────────────── */
 
-async function handleProxy(request) {
+/**
+ * Fetch a URL using Cloudflare Browser Rendering (real headless Chrome).
+ * Akamai cannot distinguish this from a normal user's browser because
+ * the TLS fingerprint, JS execution, and headers are all genuine.
+ */
+async function fetchWithBrowser(targetURL, env) {
+  let browser;
+  try {
+    browser = await puppeteer.launch(env.BROWSER);
+    const page = await browser.newPage();
+
+    // Intercept the network response so we can grab the raw body
+    // and status code instead of relying on page.content() (which
+    // would give us the rendered HTML wrapper around the JSON).
+    let interceptedResponse = null;
+
+    page.on('response', (res) => {
+      // Capture the response for the main document navigation
+      if (res.url() === targetURL || res.url().startsWith(targetURL.split('?')[0])) {
+        interceptedResponse = res;
+      }
+    });
+
+    await page.goto(targetURL, {
+      waitUntil: 'networkidle0',
+      timeout: BROWSER_TIMEOUT,
+    });
+
+    let body, status, contentType;
+
+    if (interceptedResponse) {
+      status = interceptedResponse.status();
+      contentType = interceptedResponse.headers()['content-type'] || 'text/html';
+      // For JSON responses, get the buffer directly
+      try {
+        body = await interceptedResponse.buffer();
+      } catch {
+        // If buffer is no longer available, fall back to page text
+        body = await page.evaluate(() => document.body?.innerText || '');
+      }
+    } else {
+      // Fallback: extract the text content from the rendered page
+      status = 200;
+      contentType = 'text/html';
+      body = await page.content();
+    }
+
+    return { body, status, contentType };
+  } finally {
+    if (browser) {
+      try { await browser.close(); } catch { /* ignore */ }
+    }
+  }
+}
+
+/**
+ * Fetch a URL with plain fetch() and browser-like headers.
+ * This works for sites that don't do TLS fingerprinting but may
+ * be blocked by Akamai's JA3/JA4 checks on CF Workers.
+ */
+async function fetchWithHeaders(targetURL) {
+  const targetOrigin = new URL(targetURL).origin;
+  const headers = {
+    ...BROWSER_HEADERS,
+    Referer: targetOrigin + '/',
+    Origin: targetOrigin,
+  };
+
+  const upstreamRes = await fetch(
+    new Request(targetURL, { method: 'GET', headers, redirect: 'follow' })
+  );
+
+  return upstreamRes;
+}
+
+async function handleProxy(request, env) {
   // Pre-flight
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -110,8 +191,7 @@ async function handleProxy(request) {
     return jsonError('Rate limit exceeded — try again shortly', 429);
   }
 
-  // Extract the target URL from the raw query string so we don't
-  // mangle encoded characters.  The client sends ?url=<encoded-url>.
+  // Extract the target URL from the query string
   const reqUrl = new URL(request.url);
   const targetRaw = reqUrl.searchParams.get('url');
   const targetURL = prepareURL(targetRaw);
@@ -121,23 +201,25 @@ async function handleProxy(request) {
   }
 
   try {
-    // Build upstream headers — start with the browser template,
-    // then add a Referer matching the target origin so Akamai
-    // sees a same-site navigation.
-    const targetOrigin = new URL(targetURL).origin;
-    const headers = {
-      ...BROWSER_HEADERS,
-      Referer: targetOrigin + '/',
-      Origin: targetOrigin,
-    };
+    // ── Strategy 1: Browser Rendering (bypasses Akamai TLS fingerprinting) ──
+    if (env.BROWSER) {
+      try {
+        const { body, status, contentType } = await fetchWithBrowser(targetURL, env);
 
-    const upstreamReq = new Request(targetURL, {
-      method: 'GET',
-      headers,
-      redirect: 'follow',
-    });
+        const responseHeaders = new Headers({
+          'Content-Type': contentType,
+          ...CORS_HEADERS,
+        });
 
-    const upstreamRes = await fetch(upstreamReq);
+        return new Response(body, { status, headers: responseHeaders });
+      } catch (browserErr) {
+        console.error('Browser Rendering failed, falling back to plain fetch:', browserErr);
+        // Fall through to Strategy 2
+      }
+    }
+
+    // ── Strategy 2: Plain fetch with browser headers ──
+    const upstreamRes = await fetchWithHeaders(targetURL);
 
     // Guard against absurdly large payloads
     const contentLength = parseInt(upstreamRes.headers.get('content-length') || '0', 10);
@@ -149,7 +231,6 @@ async function handleProxy(request) {
     const responseHeaders = new Headers();
 
     for (const [key, value] of upstreamRes.headers) {
-      // Skip hop-by-hop & security headers the browser shouldn't see
       if (/^(transfer-encoding|connection|keep-alive|strict-transport-security)$/i.test(key)) continue;
       responseHeaders.set(key, value);
     }
@@ -179,7 +260,7 @@ export default {
 
     // Route /api/proxy requests to the CORS proxy handler
     if (url.pathname === PROXY_PATH) {
-      return handleProxy(request);
+      return handleProxy(request, env);
     }
 
     // Everything else → static assets from public/

@@ -5,5 +5,12 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
+  },
+  // Cloudflare Browser Rendering — launches a real headless Chrome
+  // inside the Worker to bypass Akamai TLS fingerprinting.
+  // Requires Workers Paid plan ($5/mo). Remove this block to fall
+  // back to cors.lol for DOJ requests.
+  "browser": {
+    "binding": "BROWSER"
   }
 }
