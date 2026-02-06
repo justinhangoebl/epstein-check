@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epstein Checker — Cross-Reference Any Public Figure</title>
+    <meta name="description" content="Cross-reference any public figure against the Epstein files. Search by name using DBpedia and check for mentions in DOJ court documents.">
+    <meta name="keywords" content="Epstein checker, cross-reference, public figures, DBpedia, DOJ documents, court records">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://epsteinfilesearch.com/checker.html">
+    <meta property="og:title" content="Epstein Checker — Cross-Reference Any Public Figure">
+    <meta property="og:description" content="Look up any known person via DBpedia and instantly check whether they appear in the DOJ Epstein files.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://epsteinfilesearch.com/checker.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1><a href="index.html">Epstein Files</a></h1>
+            <p class="subtitle">Epstein Checker</p>
+        </div>
+        <nav class="header-nav" aria-label="Main navigation">
+            <a href="index.html">People</a>
+            <a href="documents.html">Documents</a>
+            <a href="checker.html" class="active" aria-current="page">Checker</a>
+        </nav>
+    </header>
+
+    <main class="search-container">
+        <section class="page-intro">
+            <h2>Cross-Reference a Public Figure</h2>
+            <p>Search for any known person via <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a> and check whether they appear in the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein files</a>.</p>
+        </section>
+
+        <div class="search-bar">
+            <div class="search-box-wrapper">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <input
+                    type="text"
+                    id="checkerInput"
+                    role="searchbox"
+                    aria-label="Type a name to check"
+                    placeholder="Type a name (e.g. Bill Gates)…"
+                    autocomplete="off"
+                >
+            </div>
+            <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+        </div>
+
+        <div id="checkerResult"></div>
+    </main>
+
+    <footer>
+        <p>This database contains publicly available information from court documents and records.</p>
+        <p class="disclaimer"><strong>Disclaimer:</strong> Appearance in these files does not imply wrongdoing. There is no guarantee for the correctness of this information. Use at your own discretion.</p>
+        <p>Data sources: <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a> | <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein Library</a></p>
+        <p class="last-updated">Last updated: February 2026</p>
+    </footer>
+
+    <script src="data-api.js"></script>
+    <script>
+    class EpsteinChecker {
+        constructor() {
+            this.input = document.getElementById('checkerInput');
+            this.dropdown = document.getElementById('autocompleteDropdown');
+            this.resultContainer = document.getElementById('checkerResult');
+            this.debounceTimer = null;
+            this.selectedPerson = null;
+
+            this.init();
+        }
+
+        init() {
+            this.input.addEventListener('input', () => this.onInput());
+
+            // Close dropdown on outside click
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.search-bar')) {
+                    this.dropdown.classList.remove('open');
+                }
+            });
+
+            // Keyboard nav
+            this.input.addEventListener('keydown', e => this.onKeydown(e));
+
+            // Pre-fill from query param
+            const params = new URLSearchParams(window.location.search);
+            const q = params.get('q');
+            if (q) {
+                this.input.value = q;
+                this.input.dispatchEvent(new Event('input'));
+            } else {
+                setTimeout(() => this.input.focus(), 100);
+            }
+        }
+
+        onInput() {
+            clearTimeout(this.debounceTimer);
+            const query = this.input.value.trim();
+
+            if (query.length < 2) {
+                this.dropdown.classList.remove('open');
+                return;
+            }
+
+            this.dropdown.innerHTML = '<div class="ac-loading"><div class="loading-spinner small"></div> Searching DBpedia…</div>';
+            this.dropdown.classList.add('open');
+
+            this.debounceTimer = setTimeout(() => this.searchPeople(query), 350);
+        }
+
+        async searchPeople(query) {
+            try {
+                const people = await searchDBpediaPeople(query, 8);
+
+                if (people.length === 0) {
+                    this.dropdown.innerHTML = `<div class="ac-empty">No people found for "${escapeHTML(query)}"</div>`;
+                    return;
+                }
+
+                this.renderDropdown(people);
+            } catch (error) {
+                console.error('Search failed:', error);
+                this.dropdown.innerHTML = '<div class="ac-empty">Failed to search DBpedia. Please try again.</div>';
+            }
+        }
+
+        renderDropdown(people) {
+            const html = people.map((person, i) => `
+                <button class="ac-option" data-index="${i}"
+                    data-label="${escapeAttr(person.label)}"
+                    data-comment="${escapeAttr(person.comment)}"
+                    data-types="${escapeAttr(person.types)}"
+                    data-resource="${escapeAttr(person.resource)}"
+                    data-wiki="${escapeAttr(person.wikiLink)}">
+                    <span class="ac-name">${escapeHTML(person.label)}</span>
+                    <span class="ac-type">${escapeHTML(person.types)}</span>
+                    <span class="ac-desc">${escapeHTML(truncateText(person.comment, 120))}</span>
+                </button>
+            `).join('');
+
+            this.dropdown.innerHTML = html;
+
+            this.dropdown.querySelectorAll('.ac-option').forEach(btn => {
+                btn.addEventListener('click', () => this.selectPerson(btn));
+            });
+        }
+
+        onKeydown(e) {
+            if (!this.dropdown.classList.contains('open')) return;
+
+            const options = this.dropdown.querySelectorAll('.ac-option');
+            if (options.length === 0) return;
+
+            const focused = this.dropdown.querySelector('.ac-option.focused');
+            let idx = -1;
+            if (focused) idx = Array.from(options).indexOf(focused);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (focused) focused.classList.remove('focused');
+                idx = (idx + 1) % options.length;
+                options[idx].classList.add('focused');
+                options[idx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (focused) focused.classList.remove('focused');
+                idx = idx <= 0 ? options.length - 1 : idx - 1;
+                options[idx].classList.add('focused');
+                options[idx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (focused) {
+                    this.selectPerson(focused);
+                } else if (options.length > 0) {
+                    this.selectPerson(options[0]);
+                }
+            } else if (e.key === 'Escape') {
+                this.dropdown.classList.remove('open');
+            }
+        }
+
+        async selectPerson(btn) {
+            const label = btn.dataset.label;
+            const comment = btn.dataset.comment;
+            const types = btn.dataset.types;
+            const resource = btn.dataset.resource;
+            const wikiLink = btn.dataset.wiki;
+
+            this.input.value = label;
+            this.dropdown.classList.remove('open');
+
+            // Loading
+            this.resultContainer.innerHTML = `
+                <div class="checker-card checker-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Checking <strong>${escapeHTML(label)}</strong> against Epstein files…</p>
+                </div>
+            `;
+
+            // Cross-check
+            const result = await checkPersonInFiles(label);
+            this.renderResult({ label, comment, types, resource, wikiLink, result });
+        }
+
+        renderResult({ label, comment, types, resource, wikiLink, result }) {
+            const found = result.found;
+            const status = result.status || (found ? 'found' : 'clear');
+            const statusMap = {
+                found:      { css: 'checker-found',      label: 'FOUND IN FILES',     icon: '⚠' },
+                incidental: { css: 'checker-incidental',  label: 'INCIDENTAL MENTION', icon: '~' },
+                clear:      { css: 'checker-clear',       label: 'NOT FOUND',          icon: '✓' }
+            };
+            const s = statusMap[status] || statusMap.clear;
+            const statusClass = s.css;
+            const statusLabel = s.label;
+            const statusIcon = s.icon;
+
+            let documentsHTML = '';
+            if (found && result.hits.length > 0) {
+                const previewHits = result.hits.slice(0, 5);
+                documentsHTML = `
+                    <div class="checker-documents">
+                        <h4>Sample Documents</h4>
+                        ${previewHits.map(hit => `
+                            <div class="checker-doc">
+                                <div class="checker-doc-header">
+                                    <span class="checker-doc-id">${escapeHTML(hit.fileName)}</span>
+                                    <span class="checker-doc-size">${formatFileSize(hit.fileSize)}</span>
+                                </div>
+                                ${hit.highlights.length > 0
+                                    ? `<p class="checker-doc-preview">${hit.highlights[0]}</p>`
+                                    : ''}
+                                ${hit.fileUrl
+                                    ? `<a href="${escapeAttr(hit.fileUrl)}" target="_blank" rel="noopener noreferrer" class="checker-doc-link">View PDF ↗</a>`
+                                    : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="checker-actions">
+                        <a href="documents.html?q=${encodeURIComponent(label)}" class="checker-action-btn">
+                            Search all documents for "${escapeHTML(label)}" →
+                        </a>
+                        <a href="index.html?q=${encodeURIComponent(label)}" class="checker-action-btn secondary">
+                            View in People Search →
+                        </a>
+                    </div>
+                `;
+            }
+
+            let errorNote = '';
+            if (result.error) {
+                errorNote = '<p class="checker-api-note">⚠ Could not reach the DOJ Epstein files API. This result may be incomplete.</p>';
+            }
+
+            this.resultContainer.innerHTML = `
+                <div class="checker-card ${statusClass}">
+                    <div class="checker-status">
+                        <span class="checker-status-icon">${statusIcon}</span>
+                        <span class="checker-status-label">${statusLabel}</span>
+                        ${found ? `<span class="checker-hit-count">${result.totalHits.toLocaleString()} mentions · ${result.uniqueFiles} files</span>` : ''}
+                    </div>
+                    ${result.reason ? `<div class="checker-reason"><span>Analysis:</span> ${escapeHTML(result.reason)}</div>` : ''}
+                    <div class="checker-person-info">
+                        <h3 class="checker-person-name">${escapeHTML(label)}</h3>
+                        ${types ? `<div class="checker-person-types">${types.split(', ').map(t => `<span class="checker-type-badge">${escapeHTML(t)}</span>`).join('')}</div>` : ''}
+                        ${comment ? `<p class="checker-person-bio">${escapeHTML(comment)}</p>` : ''}
+                        <div class="checker-person-links">
+                            ${wikiLink ? `<a href="${wikiLink}" target="_blank" rel="noopener noreferrer" class="checker-wiki-link">Wikipedia ↗</a>` : ''}
+                            ${resource ? `<a href="${resource}" target="_blank" rel="noopener noreferrer" class="checker-wiki-link">DBpedia ↗</a>` : ''}
+                        </div>
+                    </div>
+                    ${documentsHTML}
+                    ${errorNote}
+                </div>
+            `;
+        }
+    }
+
+    // Initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => new EpsteinChecker());
+    } else {
+        new EpsteinChecker();
+    }
+
+    // Header scroll shrink
+    window.addEventListener('scroll', () => {
+        const header = document.querySelector('header');
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            const input = document.getElementById('checkerInput');
+            if (input) { input.focus(); input.select(); }
+        }
+    });
+    </script>
+</body>
+</html>

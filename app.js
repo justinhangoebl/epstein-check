@@ -1,427 +1,333 @@
-// Main application logic with API integration
-class EpsteinFilesSearch {
+// app.js — People Search (index.html)
+// Search DBpedia for people, then cross-reference each against DOJ Epstein files.
+// Cards turn green (not found) or red (found).
+
+class PeopleSearch {
     constructor() {
-        this.database = [];
-        this.currentResults = [];
-        this.documentsCache = new Map();
-        this.totalApiDocuments = 0;
         this.searchInput = document.getElementById('searchInput');
-        this.categoryFilter = document.getElementById('categoryFilter');
-        this.sortBy = document.getElementById('sortBy');
         this.resultsContainer = document.getElementById('results');
-        this.personModal = null;
-        
+        this.statsBar = document.getElementById('statsBar');
+        this.debounceTimer = null;
+        this.currentPeople = [];
+        this.checkedCount = 0;
+
         this.init();
     }
 
-    async init() {
-        // Show loading state
-        this.showLoading();
-        
-        // Try to load from API first, fall back to static data
-        try {
-            if (typeof loadEpsteinData === 'function') {
-                this.database = await loadEpsteinData();
-                // Get total documents from API
-                if (typeof getTotalDocuments === 'function') {
-                    this.totalApiDocuments = getTotalDocuments();
-                }
-                console.log('Loaded data from API:', this.database.length, 'persons,', this.totalApiDocuments, 'documents');
-            } else {
-                this.database = epsteinDatabase || [];
-                console.log('Using static database');
-            }
-        } catch (error) {
-            console.error('Failed to load API data, using static fallback:', error);
-            this.database = epsteinDatabase || [];
+    init() {
+        // Search input
+        this.searchInput.addEventListener('input', () => this.onInput());
+
+        // Suggestion buttons
+        this.bindSuggestions();
+
+        // Pre-fill from query param
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        if (q) {
+            this.searchInput.value = q;
+            this.handleSearch(q);
+        } else {
+            setTimeout(() => this.searchInput.focus(), 100);
         }
-        
-        this.currentResults = this.database;
-
-        // Event listeners
-        this.searchInput.addEventListener('input', () => this.handleSearch());
-        this.categoryFilter.addEventListener('change', () => this.handleSearch());
-        this.sortBy.addEventListener('change', () => this.handleSearch());
-
-        // Create modal
-        this.createPersonModal();
-
-        // Initial render
-        this.updateStats();
-        this.renderResults(this.database);
-
-        // Focus search on load
-        setTimeout(() => this.searchInput.focus(), 100);
     }
 
-    showLoading() {
+    bindSuggestions() {
+        document.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.searchInput.value = btn.dataset.query;
+                this.handleSearch(btn.dataset.query);
+            });
+        });
+    }
+
+    onInput() {
+        clearTimeout(this.debounceTimer);
+        const query = this.searchInput.value.trim();
+
+        if (query.length < 2) {
+            this.showPrompt();
+            return;
+        }
+
+        this.debounceTimer = setTimeout(() => this.handleSearch(query), 350);
+    }
+
+    showPrompt() {
+        this.statsBar.style.display = 'none';
+        this.resultsContainer.innerHTML = `
+            <div class="search-prompt">
+                <h2>Search for Anyone</h2>
+                <p>Type a name to find people via DBpedia and cross-reference them against the Epstein files.</p>
+                <div class="suggested-searches">
+                    <p>Try searching for:</p>
+                    <div class="search-suggestions">
+                        <button class="suggestion-btn" data-query="Bill Clinton">Bill Clinton</button>
+                        <button class="suggestion-btn" data-query="Prince Andrew">Prince Andrew</button>
+                        <button class="suggestion-btn" data-query="Donald Trump">Donald Trump</button>
+                        <button class="suggestion-btn" data-query="Bill Gates">Bill Gates</button>
+                        <button class="suggestion-btn" data-query="Elon Musk">Elon Musk</button>
+                        <button class="suggestion-btn" data-query="Stephen Hawking">Stephen Hawking</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.bindSuggestions();
+    }
+
+    async handleSearch(query) {
+        // Show loading
         this.resultsContainer.innerHTML = `
             <div class="loading-state">
                 <div class="loading-spinner"></div>
-                <p>Loading records from API...</p>
+                <p>Searching DBpedia for "${escapeHTML(query)}"…</p>
             </div>
         `;
-    }
+        this.statsBar.style.display = 'none';
 
-    createPersonModal() {
-        const modal = document.createElement('div');
-        modal.id = 'personModal';
-        modal.className = 'person-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <button class="modal-close">&times;</button>
-                <div class="modal-header">
-                    <h2 class="modal-name"></h2>
-                    <div class="modal-badges"></div>
-                </div>
-                <div class="modal-body">
-                    <div class="modal-section">
-                        <h3>Overview</h3>
-                        <p class="modal-context"></p>
-                    </div>
-                    <div class="modal-stats"></div>
-                    <div class="modal-section">
-                        <h3>Documents</h3>
-                        <div class="modal-documents"></div>
-                    </div>
-                    <div class="modal-section">
-                        <h3>Locations</h3>
-                        <div class="modal-locations"></div>
-                    </div>
-                    <div class="modal-section">
-                        <h3>Associations</h3>
-                        <div class="modal-associations"></div>
-                    </div>
-                    <div class="modal-section">
-                        <h3>Tags</h3>
-                        <div class="modal-tags"></div>
-                    </div>
-                    <div class="modal-section modal-api-results">
-                        <h3>Related Documents from API</h3>
-                        <div class="api-documents-list"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        this.personModal = modal;
-
-        modal.querySelector('.modal-close').addEventListener('click', () => this.closeModal());
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeModal();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.classList.contains('active')) {
-                this.closeModal();
-            }
-        });
-    }
-
-    async openPersonModal(person) {
-        const modal = this.personModal;
-        
-        modal.querySelector('.modal-name').textContent = person.name;
-        modal.querySelector('.modal-context').textContent = person.context;
-        
-        const badgesHtml = `
-            <span class="badge badge-category">${this.formatCategory(person.category)}</span>
-            <span class="badge badge-mentions">${person.mentions} mentions</span>
-            <span class="badge badge-date">${person.dateRange}</span>
-        `;
-        modal.querySelector('.modal-badges').innerHTML = badgesHtml;
-        
-        modal.querySelector('.modal-stats').innerHTML = `
-            <div class="modal-stat">
-                <span class="stat-value">${person.mentions}</span>
-                <span class="stat-label">Total Mentions</span>
-            </div>
-            <div class="modal-stat">
-                <span class="stat-value">${person.documents.length}</span>
-                <span class="stat-label">Documents</span>
-            </div>
-            <div class="modal-stat">
-                <span class="stat-value">${person.locations.length}</span>
-                <span class="stat-label">Locations</span>
-            </div>
-            <div class="modal-stat">
-                <span class="stat-value">${person.associations.length}</span>
-                <span class="stat-label">Associations</span>
-            </div>
-        `;
-        
-        // Show document details if available from API
-        if (person.documentDetails && person.documentDetails.length > 0) {
-            modal.querySelector('.modal-documents').innerHTML = 
-                person.documentDetails.map(doc => `
-                    <div class="doc-detail-item">
-                        <span class="doc-id">${doc.id || 'N/A'}</span>
-                        <span class="doc-type-badge">${doc.type || 'Document'}</span>
-                        ${doc.preview ? `<p class="doc-preview">${this.truncateText(doc.preview, 150)}</p>` : ''}
-                    </div>
-                `).join('');
-        } else {
-            modal.querySelector('.modal-documents').innerHTML = 
-                person.documents.map(doc => `<span class="tag tag-document">${doc}</span>`).join('');
-        }
-        
-        modal.querySelector('.modal-locations').innerHTML = 
-            person.locations.map(loc => `<span class="tag tag-location">${loc}</span>`).join('');
-        
-        modal.querySelector('.modal-associations').innerHTML = 
-            person.associations.map(assoc => `
-                <span class="tag tag-association clickable" data-name="${assoc}">${assoc}</span>
-            `).join('');
-        
-        modal.querySelector('.modal-tags').innerHTML = 
-            person.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
-        
-        modal.querySelectorAll('.tag-association.clickable').forEach(tag => {
-            tag.addEventListener('click', (e) => {
-                const name = e.target.dataset.name;
-                this.closeModal();
-                this.searchInput.value = name;
-                this.handleSearch();
-            });
-        });
-        
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        
-        this.fetchPersonApiData(person);
-    }
-
-    async fetchPersonApiData(person) {
-        const apiSection = this.personModal.querySelector('.modal-api-results');
-        const apiList = this.personModal.querySelector('.api-documents-list');
-        
-        if (typeof searchAPI !== 'function') {
-            apiSection.style.display = 'none';
-            return;
-        }
-        
-        apiSection.style.display = 'block';
-        apiList.innerHTML = '<p class="loading-text">Searching for more documents...</p>';
-        
         try {
-            const result = await searchAPI(person.name);
-            const hits = result.hits || result || [];
-            
-            if (hits && hits.length > 0) {
-                apiList.innerHTML = hits.slice(0, 10).map(doc => `
-                    <div class="api-document">
-                        <div class="api-doc-header">
-                            <span class="api-doc-id">${doc.efta_id || doc.id || 'N/A'}</span>
-                            <span class="api-doc-type">${doc.doc_type || 'Document'}</span>
-                        </div>
-                        <p class="api-doc-preview">${this.truncateText(doc.content_preview || doc.content || 'No preview available', 200)}</p>
+            const people = await searchDBpediaPeople(query, 12);
+
+            if (people.length === 0) {
+                this.resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        <h2>No People Found</h2>
+                        <p>DBpedia returned no results for "${escapeHTML(query)}"</p>
                     </div>
-                `).join('');
-            } else {
-                apiList.innerHTML = '<p class="no-api-results">No additional documents found.</p>';
+                `;
+                return;
             }
+
+            this.currentPeople = people;
+            this.checkedCount = 0;
+
+            // Show stats bar
+            this.statsBar.style.display = '';
+            document.getElementById('resultsCount').textContent = people.length;
+            document.getElementById('checkedCount').textContent = '0';
+
+            // Render cards in "checking" state
+            this.renderCards(people);
+
+            // Cross-check each person against DOJ files in parallel
+            await this.crossCheckAll(people);
+
         } catch (error) {
-            console.error('Failed to fetch API data:', error);
-            apiList.innerHTML = '<p class="api-error">Could not load additional documents.</p>';
-        }
-    }
-
-    truncateText(text, maxLength) {
-        if (text.length <= maxLength) return text;
-        return text.substring(0, maxLength) + '...';
-    }
-
-    closeModal() {
-        this.personModal.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    handleSearch() {
-        const searchTerm = this.searchInput.value.toLowerCase().trim();
-        const category = this.categoryFilter.value;
-        const sort = this.sortBy.value;
-
-        let filtered = this.database;
-        
-        if (searchTerm) {
-            filtered = this.database.filter(record => {
-                return (
-                    record.name.toLowerCase().includes(searchTerm) ||
-                    record.context.toLowerCase().includes(searchTerm) ||
-                    record.locations.some(loc => loc.toLowerCase().includes(searchTerm)) ||
-                    record.associations.some(assoc => assoc.toLowerCase().includes(searchTerm)) ||
-                    record.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
-                    record.documents.some(doc => doc.toLowerCase().includes(searchTerm))
-                );
-            });
-        }
-
-        if (category !== 'all') {
-            filtered = filtered.filter(record => record.category === category);
-        }
-
-        filtered = this.sortResults(filtered, sort);
-
-        this.currentResults = filtered;
-        this.renderResults(filtered, searchTerm);
-        this.updateStats();
-    }
-
-    sortResults(results, sortType) {
-        const sorted = [...results];
-        
-        switch(sortType) {
-            case 'name-asc':
-                return sorted.sort((a, b) => a.name.localeCompare(b.name));
-            case 'name-desc':
-                return sorted.sort((a, b) => b.name.localeCompare(a.name));
-            case 'mentions-desc':
-                return sorted.sort((a, b) => b.mentions - a.mentions);
-            case 'mentions-asc':
-                return sorted.sort((a, b) => a.mentions - b.mentions);
-            default:
-                return sorted;
-        }
-    }
-
-    highlightText(text, searchTerm) {
-        if (!searchTerm) return text;
-        
-        const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
-        return text.replace(regex, '<span class="highlight">$1</span>');
-    }
-
-    escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    renderResults(results, searchTerm = '') {
-        if (results.length === 0) {
+            console.error('People search failed:', error);
             this.resultsContainer.innerHTML = `
                 <div class="no-results">
-                    <h2>No Results Found</h2>
-                    <p>Try adjusting your search terms or filters</p>
+                    <h2>Search Failed</h2>
+                    <p>Could not search DBpedia. Please try again.</p>
                 </div>
             `;
-            return;
+        }
+    }
+
+    renderCards(people) {
+        let html = '<div class="results-grid">';
+        people.forEach((person, index) => {
+            html += `
+                <div class="person-card person-card-checking" id="person-card-${index}"
+                     data-index="${index}" style="animation-delay: ${index * 0.04}s"
+                     role="button" tabindex="0">
+                    <div class="person-card-header">
+                        <h3 class="person-name">${escapeHTML(person.label)}</h3>
+                        <span class="person-status-badge checking">
+                            <span class="loading-spinner tiny"></span>
+                        </span>
+                    </div>
+                    <div class="person-card-meta">
+                        ${person.types ? `<span class="category-badge">${escapeHTML(person.types)}</span>` : ''}
+                    </div>
+                    <p class="person-context">${escapeHTML(truncateText(person.comment, 120))}</p>
+                    <div class="person-card-footer">
+                        <div class="person-links">
+                            ${person.wikiLink ? `<a href="${escapeAttr(person.wikiLink)}" target="_blank" rel="noopener noreferrer" class="mini-link" onclick="event.stopPropagation()">Wikipedia ↗</a>` : ''}
+                        </div>
+                        <span class="person-file-count" id="person-count-${index}">Checking…</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        this.resultsContainer.innerHTML = html;
+
+        // Click handlers to open details
+        this.resultsContainer.querySelectorAll('.person-card').forEach(card => {
+            const handler = () => {
+                const idx = parseInt(card.dataset.index);
+                const person = this.currentPeople[idx];
+                if (person && person._checkResult) {
+                    this.openModal(person);
+                }
+            };
+            card.addEventListener('click', handler);
+            card.addEventListener('keypress', e => { if (e.key === 'Enter') handler(); });
+        });
+    }
+
+    async crossCheckAll(people) {
+        // Fire all checks in parallel
+        const promises = people.map((person, index) =>
+            checkPersonInFiles(person.label).then(result => {
+                person._checkResult = result;
+                this.updateCard(index, person, result);
+                this.checkedCount++;
+                document.getElementById('checkedCount').textContent = this.checkedCount;
+            })
+        );
+
+        await Promise.allSettled(promises);
+    }
+
+    updateCard(index, person, result) {
+        const card = document.getElementById(`person-card-${index}`);
+        const countEl = document.getElementById(`person-count-${index}`);
+        if (!card || !countEl) return;
+
+        card.classList.remove('person-card-checking');
+        const badge = card.querySelector('.person-status-badge');
+        const status = result.status || (result.found ? 'found' : 'clear');
+
+        if (status === 'found') {
+            card.classList.add('person-card-found');
+            badge.className = 'person-status-badge found';
+            badge.innerHTML = '⚠';
+            countEl.textContent = `${result.totalHits.toLocaleString()} mentions`;
+            countEl.classList.add('found-count');
+        } else if (status === 'incidental') {
+            card.classList.add('person-card-incidental');
+            badge.className = 'person-status-badge incidental';
+            badge.innerHTML = '~';
+            countEl.textContent = `${result.totalHits.toLocaleString()} (incidental)`;
+            countEl.classList.add('incidental-count');
+        } else {
+            card.classList.add('person-card-clear');
+            badge.className = 'person-status-badge clear';
+            badge.innerHTML = '✓';
+            countEl.textContent = result.error ? 'Check failed' : 'Not found';
+            countEl.classList.add('clear-count');
+        }
+    }
+
+    openModal(person) {
+        const result = person._checkResult;
+        if (!result) return;
+
+        const status = result.status || (result.found ? 'found' : 'clear');
+        const statusMap = {
+            found:      { css: 'checker-found',      label: 'FOUND IN FILES',  icon: '⚠' },
+            incidental: { css: 'checker-incidental',  label: 'INCIDENTAL MENTION', icon: '~' },
+            clear:      { css: 'checker-clear',       label: 'NOT FOUND',       icon: '✓' }
+        };
+        const s = statusMap[status] || statusMap.clear;
+        const statusClass = s.css;
+        const statusLabel = s.label;
+        const statusIcon = s.icon;
+
+        let documentsHTML = '';
+        if (result.found && result.hits.length > 0) {
+            const previewHits = result.hits.slice(0, 5);
+            documentsHTML = `
+                <div class="checker-documents">
+                    <h4>Sample Documents</h4>
+                    ${previewHits.map(hit => `
+                        <div class="checker-doc">
+                            <div class="checker-doc-header">
+                                <span class="checker-doc-id">${escapeHTML(hit.fileName)}</span>
+                                <span class="checker-doc-size">${formatFileSize(hit.fileSize)}</span>
+                            </div>
+                            ${hit.highlights.length > 0
+                                ? `<p class="checker-doc-preview">${hit.highlights[0]}</p>`
+                                : ''}
+                            ${hit.fileUrl
+                                ? `<a href="${escapeAttr(hit.fileUrl)}" target="_blank" rel="noopener noreferrer" class="checker-doc-link">View PDF ↗</a>`
+                                : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="checker-actions">
+                    <a href="documents.html?q=${encodeURIComponent(person.label)}" class="checker-action-btn">
+                        Search all documents for "${escapeHTML(person.label)}" →
+                    </a>
+                </div>
+            `;
         }
 
-        const html = `
-            <div class="results-grid">
-                ${results.map((record, index) => {
-                    const name = this.highlightText(record.name, searchTerm);
-                    const categoryClass = `category-${record.category}`;
-                    
-                    return `
-                        <div class="person-card ${categoryClass}" data-index="${index}" style="animation-delay: ${index * 0.03}s">
-                            <div class="person-card-header">
-                                <h3 class="person-name">${name}</h3>
-                                <span class="person-mentions">${record.mentions}</span>
-                            </div>
-                            <div class="person-card-meta">
-                                <span class="category-badge">${this.formatCategory(record.category)}</span>
-                                <span class="date-badge">${record.dateRange}</span>
-                            </div>
-                            <p class="person-context">${this.truncateText(record.context, 80)}</p>
-                            <div class="person-card-footer">
-                                <div class="person-locations">
-                                    ${record.locations.slice(0, 2).map(loc => `<span class="mini-tag">${loc}</span>`).join('')}
-                                    ${record.locations.length > 2 ? `<span class="mini-tag more">+${record.locations.length - 2}</span>` : ''}
-                                </div>
-                                <button class="view-details-btn" data-person="${record.name}">View Details →</button>
-                            </div>
+        // Create modal
+        const overlay = document.createElement('div');
+        overlay.className = 'person-modal active';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <button class="modal-close" aria-label="Close">&times;</button>
+                <div class="checker-card ${statusClass}">
+                    <div class="checker-status">
+                        <span class="checker-status-icon">${statusIcon}</span>
+                        <span class="checker-status-label">${statusLabel}</span>
+                        ${result.found ? `<span class="checker-hit-count">${result.totalHits.toLocaleString()} mentions · ${result.uniqueFiles} files</span>` : ''}
+                    </div>
+                    ${result.reason ? `<div class="checker-reason"><span>Analysis:</span> ${escapeHTML(result.reason)}</div>` : ''}
+                    <div class="checker-person-info">
+                        <h3 class="checker-person-name">${escapeHTML(person.label)}</h3>
+                        ${person.types ? `<div class="checker-person-types">${person.types.split(', ').map(t => `<span class="checker-type-badge">${escapeHTML(t)}</span>`).join('')}</div>` : ''}
+                        ${person.comment ? `<p class="checker-person-bio">${escapeHTML(person.comment)}</p>` : ''}
+                        <div class="checker-person-links">
+                            ${person.wikiLink ? `<a href="${person.wikiLink}" target="_blank" rel="noopener noreferrer" class="checker-wiki-link">Wikipedia ↗</a>` : ''}
+                            ${person.resource ? `<a href="${person.resource}" target="_blank" rel="noopener noreferrer" class="checker-wiki-link">DBpedia ↗</a>` : ''}
                         </div>
-                    `;
-                }).join('')}
+                    </div>
+                    ${documentsHTML}
+                </div>
             </div>
         `;
 
-        this.resultsContainer.innerHTML = html;
-        
-        this.resultsContainer.querySelectorAll('.view-details-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const personName = btn.dataset.person;
-                const person = this.database.find(p => p.name === personName);
-                if (person) this.openPersonModal(person);
-            });
-        });
-        
-        this.resultsContainer.querySelectorAll('.person-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const index = parseInt(card.dataset.index);
-                const person = results[index];
-                if (person) this.openPersonModal(person);
-            });
-        });
-    }
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
 
-    formatCategory(category) {
-        const categoryMap = {
-            'flight-log': 'Flight Log',
-            'court-document': 'Court Document',
-            'witness': 'Witness Testimony',
-            'associate': 'Known Associate'
+        const closeModal = () => {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            setTimeout(() => overlay.remove(), 300);
         };
-        return categoryMap[category] || category;
-    }
 
-    updateStats() {
-        const totalRecords = this.database.length;
-        const resultsCount = this.currentResults.length;
-        
-        // Use real API document count if available, otherwise count from database
-        let documentsCount = this.totalApiDocuments;
-        if (!documentsCount) {
-            const uniqueDocuments = new Set();
-            this.database.forEach(record => {
-                record.documents.forEach(doc => uniqueDocuments.add(doc));
-            });
-            documentsCount = uniqueDocuments.size;
-        }
-
-        this.animateValue('totalRecords', 0, totalRecords, 800);
-        this.animateValue('resultsCount', 0, resultsCount, 600);
-        this.animateValue('documentsCount', 0, documentsCount, 1000);
-    }
-
-    animateValue(elementId, start, end, duration) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
-        
-        const range = end - start;
-        const increment = range / (duration / 16);
-        let current = start;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-                current = end;
-                clearInterval(timer);
+        overlay.querySelector('.modal-close').addEventListener('click', closeModal);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+        document.addEventListener('keydown', function handler(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handler);
             }
-            element.textContent = Math.round(current);
-        }, 16);
+        });
+
+        // Focus the close button
+        overlay.querySelector('.modal-close').focus();
     }
 }
 
-// Initialize app when DOM is ready
+// Initialize
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new EpsteinFilesSearch();
-    });
+    document.addEventListener('DOMContentLoaded', () => new PeopleSearch());
 } else {
-    new EpsteinFilesSearch();
+    new PeopleSearch();
 }
 
-// Add keyboard shortcuts
-document.addEventListener('keydown', (e) => {
+// Keyboard shortcut: Cmd/Ctrl+K to focus search
+document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        document.getElementById('searchInput').focus();
-        document.getElementById('searchInput').select();
+        const input = document.getElementById('searchInput');
+        if (input) { input.focus(); input.select(); }
     }
-    
-    if (e.key === 'Escape' && !document.getElementById('personModal')?.classList.contains('active')) {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('searchInput').dispatchEvent(new Event('input'));
+});
+
+// Header scroll shrink
+window.addEventListener('scroll', () => {
+    const header = document.querySelector('header');
+    if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+    } else {
+        header.classList.remove('scrolled');
     }
 });

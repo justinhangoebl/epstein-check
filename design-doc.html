@@ -1,0 +1,253 @@
+# Design Document: Epstein Archive Person Search Interface
+
+## Overview
+A simple, single-page web application that allows users to search for people mentioned in the Epstein documents and view their associated source documents.
+
+## User Flow
+
+1. User lands on the page with a search box
+2. User types a person's name (e.g., "Maxwell")
+3. System displays matching person cards in real-time
+4. User clicks on a person card
+5. Modal opens showing all documents mentioning that person
+6. User can click on document links to view them
+7. User closes modal and can search again
+
+## Technical Architecture
+
+### Data Source
+- Static JSON file containing person data extracted from the archive
+- Each person object contains:
+  - `name`: Full name of the person
+  - `documentCount`: Number of documents they appear in
+  - `documents`: Array of document objects with:
+    - `id`: Unique document identifier
+    - `title`: Document title/description
+    - `date`: Document date (if available)
+    - `type`: Document type (deposition, court filing, etc.)
+    - `url`: Link to the actual document on epstein-docs.github.io
+
+### File Structure
+```
+/
+├── index.html          # Main HTML file
+├── styles.css          # All styles
+├── script.js           # All JavaScript logic
+└── data.json           # Person and document data
+```
+
+### Components
+
+#### 1. Search Interface
+- **Search Input**: Text input with placeholder "Search for a person..."
+- **Search Icon**: Visual indicator in the input field
+- **Real-time filtering**: Updates results as user types (debounced)
+- **No results message**: Shows when no matches found
+
+#### 2. Person Cards
+- **Card Layout**: Grid of cards showing:
+  - Person name (prominent)
+  - Document count (smaller text, e.g., "152 documents")
+  - Hover effect for interactivity
+- **Grid**: Responsive grid (1 column mobile, 2-3 columns tablet, 3-4 desktop)
+- **Click action**: Opens modal with that person's documents
+
+#### 3. Modal
+- **Overlay**: Semi-transparent dark background
+- **Modal Content**:
+  - Header with person name
+  - Close button (X in top-right)
+  - Document count subtitle
+  - Scrollable list of documents
+- **Document List Items**:
+  - Document title/description
+  - Document type badge
+  - Date (if available)
+  - Click to open document in new tab
+- **Close Actions**:
+  - Click X button
+  - Click outside modal (on overlay)
+  - Press Escape key
+
+## Data Structure
+
+### data.json Format
+```json
+{
+  "people": [
+    {
+      "id": "person-1",
+      "name": "Jeffrey Epstein",
+      "documentCount": 250,
+      "documents": [
+        {
+          "id": "doc-1",
+          "title": "Deposition Transcript - Page 1",
+          "date": "2016-05-03",
+          "type": "Deposition",
+          "url": "https://epstein-docs.github.io/documents/doc-1/"
+        },
+        {
+          "id": "doc-2",
+          "title": "Court Filing - Motion to Dismiss",
+          "date": "2019-07-08",
+          "type": "Court Filing",
+          "url": "https://epstein-docs.github.io/documents/doc-2/"
+        }
+      ]
+    },
+    {
+      "id": "person-2",
+      "name": "Ghislaine Maxwell",
+      "documentCount": 180,
+      "documents": [...]
+    }
+  ]
+}
+```
+
+## Functionality Details
+
+### Search Algorithm
+```javascript
+// Case-insensitive partial match
+function filterPeople(searchTerm) {
+  const term = searchTerm.toLowerCase().trim();
+  return people.filter(person => 
+    person.name.toLowerCase().includes(term)
+  );
+}
+```
+
+### Debouncing
+- Wait 300ms after user stops typing before filtering
+- Prevents excessive re-rendering during fast typing
+
+### Sorting
+- Results sorted alphabetically by name
+- Could add option to sort by document count
+
+## UI/UX Design
+
+### Color Scheme
+- **Primary**: #2563eb (blue) - for links and accents
+- **Background**: #f9fafb (light gray)
+- **Card background**: #ffffff (white)
+- **Text**: #111827 (dark gray)
+- **Border**: #e5e7eb (light gray)
+- **Modal overlay**: rgba(0, 0, 0, 0.5)
+
+### Typography
+- **Font**: System font stack (sans-serif)
+- **Headings**: Bold, larger size
+- **Body**: Regular weight, readable size (16px)
+
+### Spacing
+- **Container padding**: 20px (mobile), 40px (desktop)
+- **Card padding**: 20px
+- **Card gap**: 20px
+- **Modal padding**: 24px
+
+### Responsive Breakpoints
+- **Mobile**: < 640px (1 column)
+- **Tablet**: 640px - 1024px (2-3 columns)
+- **Desktop**: > 1024px (3-4 columns)
+
+## Accessibility
+
+### Keyboard Navigation
+- Tab through search input and person cards
+- Enter to open modal
+- Escape to close modal
+- Focus management (return focus after closing modal)
+
+### Screen Readers
+- Proper ARIA labels
+- Semantic HTML (header, main, section)
+- Alt text for any icons
+- Announce search results count
+
+### Visual
+- High contrast ratios (WCAG AA)
+- Focus indicators on interactive elements
+- Sufficient click target sizes (44x44px minimum)
+
+## Performance Considerations
+
+### Initial Load
+- Keep data.json under 500KB for fast loading
+- Minify JSON in production
+- Consider lazy loading if dataset grows
+
+### Search Performance
+- Debounce search input (300ms)
+- Limit results to 100 if dataset is large
+- Use efficient filtering (no regex unless needed)
+
+### Modal
+- Add/remove from DOM only when needed (or hide/show)
+- Prevent body scroll when modal is open
+
+## Browser Compatibility
+- Modern browsers (Chrome, Firefox, Safari, Edge)
+- ES6+ JavaScript (no transpiling needed)
+- CSS Grid and Flexbox
+- No polyfills required
+
+## Future Enhancements (Out of Scope)
+- Advanced filters (by document type, date range)
+- Highlight search terms in results
+- Export person's document list
+- Share link to specific person
+- Dark mode toggle
+- Pagination for large result sets
+- Full-text search across document content
+
+## Error Handling
+
+### Data Loading
+- Show error message if data.json fails to load
+- Graceful degradation if JSON is malformed
+
+### Empty States
+- "No results found" when search yields no matches
+- "Loading..." state while fetching data
+- "No documents available" if person has empty documents array
+
+## Implementation Phases
+
+### Phase 1: Core Structure
+1. Create HTML skeleton
+2. Add basic CSS styling
+3. Load and parse JSON data
+4. Display all people initially
+
+### Phase 2: Search Functionality
+1. Implement search input
+2. Add filtering logic
+3. Update display on search
+4. Add debouncing
+
+### Phase 3: Modal
+1. Create modal HTML structure
+2. Style modal and overlay
+3. Implement open/close logic
+4. Display person's documents in modal
+
+### Phase 4: Polish
+1. Add animations/transitions
+2. Improve accessibility
+3. Responsive design refinement
+4. Cross-browser testing
+
+## Testing Checklist
+- [ ] Search filters correctly
+- [ ] Modal opens on card click
+- [ ] Modal closes on X, overlay click, and Escape
+- [ ] Document links open in new tab
+- [ ] Responsive on mobile, tablet, desktop
+- [ ] Keyboard navigation works
+- [ ] No console errors
+- [ ] Works with empty search
+- [ ] Works with no results
+- [ ] Handles missing data gracefully

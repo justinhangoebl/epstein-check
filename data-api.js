@@ -1,40 +1,281 @@
-// data-api.js - Simple API wrapper for DugganUSA Epstein Files Search
-// This is just a frontend - all data comes directly from the API
+// data-api.js — DOJ Epstein Files API + DBpedia wrapper
+// Uses the official justice.gov multimedia-search endpoint
 
-const API_CONFIG = {
-  baseUrl: 'https://analytics.dugganusa.com/api/v1/search',
-  index: 'epstein_files'
+const DOJ_API = {
+  baseUrl: 'https://www.justice.gov/multimedia-search',
+  corsProxy: 'https://corsproxy.io/?url=',
+  pageSize: 20
 };
 
 /**
- * Search the Epstein Files API
- * @param {string} query - Search query
- * @returns {Promise<{hits: Array, totalHits: number}>}
+ * Search DOJ Epstein files via the multimedia-search endpoint.
+ * Routed through a CORS proxy because justice.gov does not send
+ * Access-Control-Allow-Origin headers.
+ *
+ * @param {string} query - search keywords
+ * @param {number} [page=1] - 1-based page index
+ * @returns {Promise<{hits: Array, totalHits: number, uniqueFiles: number, query: string}>}
  */
-async function searchAPI(query) {
+async function searchDOJ(query, page = 1) {
   if (!query || query.trim().length === 0) {
-    return { hits: [], totalHits: 0 };
+    return { hits: [], totalHits: 0, uniqueFiles: 0, query: '' };
   }
-  
-  const url = `${API_CONFIG.baseUrl}?q=${encodeURIComponent(query)}&indexes=${API_CONFIG.index}`;
-  
+
+  const target = `${DOJ_API.baseUrl}?keys=${encodeURIComponent(query.trim())}&page=${page}`;
+  const url = `${DOJ_API.corsProxy}${encodeURIComponent(target)}`;
+
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-    
+    if (!response.ok) throw new Error(`DOJ API error: ${response.status}`);
+
     const data = await response.json();
-    
-    if (data.success && data.data) {
+
+    const rawHits = data?.hits?.hits || [];
+    const totalValue = data?.hits?.total?.value || 0;
+    const uniqueFiles = data?.aggregations?.unique_count?.value || 0;
+
+    const hits = rawHits.map(h => {
+      const src = h._source || {};
+      const highlights = h.highlight?.content || [];
+
       return {
-        hits: data.data.hits || [],
-        totalHits: data.data.totalHits || 0,
-        query: data.data.query
+        documentId: src.documentId || '',
+        fileName: src.ORIGIN_FILE_NAME || '',
+        fileUrl: src.ORIGIN_FILE_URI || '',
+        contentType: src.contentType || '',
+        fileSize: src.fileSize || 0,
+        totalWords: src.totalWords || 0,
+        totalCharacters: src.totalCharacters || 0,
+        startPage: src.startPage || null,
+        endPage: src.endPage || null,
+        processedAt: src.processedAt || '',
+        key: src.key || '',
+        highlights: highlights,
+        score: h._score || 0
       };
-    }
-    
-    return { hits: [], totalHits: 0 };
+    });
+
+    return {
+      hits,
+      totalHits: totalValue,
+      uniqueFiles,
+      query: query.trim()
+    };
   } catch (error) {
-    console.error(`API search failed for "${query}":`, error);
+    console.error(`DOJ search failed for "${query}":`, error);
     throw error;
   }
 }
+
+/**
+ * Check if a person appears in the DOJ Epstein files.
+ * Returns a status: 'found' (red), 'incidental' (orange), or 'clear' (green).
+ *
+ * The algorithm scores each hit for relevance to determine whether
+ * the person is genuinely mentioned vs. appearing incidentally
+ * (e.g. Billie Eilish in a Napster spam email).
+ *
+ * @param {string} name - person name to check
+ * @returns {Promise<{found: boolean, status: string, totalHits: number, uniqueFiles: number, hits: Array, relevanceScore: number, reason: string, error?: boolean}>}
+ */
+async function checkPersonInFiles(name) {
+  try {
+    const result = await searchDOJ(name, 1);
+
+    if (result.totalHits === 0) {
+      return {
+        found: false, status: 'clear',
+        totalHits: 0, uniqueFiles: 0, hits: [],
+        relevanceScore: 0, reason: 'No documents found'
+      };
+    }
+
+    // Score the relevance of the match
+    const { score, reason } = scoreRelevance(name, result);
+
+    let status;
+    if (score >= 60) {
+      status = 'found';       // red — genuinely present
+    } else if (score > 0) {
+      status = 'incidental';  // orange — mentioned but likely not relevant
+    } else {
+      status = 'clear';       // green — false positive / no real presence
+    }
+
+    return {
+      found: result.totalHits > 0,
+      status,
+      totalHits: result.totalHits,
+      uniqueFiles: result.uniqueFiles,
+      hits: result.hits,
+      relevanceScore: score,
+      reason
+    };
+  } catch (error) {
+    console.warn(`Check failed for "${name}":`, error);
+    return { found: false, status: 'clear', totalHits: 0, uniqueFiles: 0, hits: [], relevanceScore: 0, reason: 'API error', error: true };
+  }
+}
+
+/**
+ * Score how relevant the DOJ search results are to the person.
+ * Returns 0-100 where higher = more likely genuinely in the files.
+ *
+ * Signals checked:
+ * - Number of unique files (more files = stronger signal)
+ * - Total hits (more mentions = stronger)
+ * - Whether the person's name parts appear in highlighted <em> tags
+ * - Whether highlights contain spam/ad/newsletter indicators
+ * - Relevance score from the search engine
+ */
+function scoreRelevance(name, result) {
+  let score = 0;
+  const reasons = [];
+  const nameParts = name.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+
+  // 1. Volume signals
+  const files = result.uniqueFiles || 0;
+  const hits = result.totalHits || 0;
+
+  if (files >= 10) { score += 40; reasons.push(`${files} unique files`); }
+  else if (files >= 5) { score += 30; reasons.push(`${files} unique files`); }
+  else if (files >= 3) { score += 20; reasons.push(`${files} files`); }
+  else if (files >= 2) { score += 10; reasons.push(`${files} files`); }
+  else { score += 5; reasons.push('single file'); }
+
+  // 2. Check highlighted content for name match
+  const allHighlights = result.hits
+    .flatMap(h => h.highlights || [])
+    .join(' ')
+    .toLowerCase();
+
+  // Extract text inside <em> tags — these are the actual matched terms
+  const emMatches = allHighlights.match(/<em>([^<]+)<\/em>/g) || [];
+  const emText = emMatches.map(m => m.replace(/<\/?em>/g, '').toLowerCase()).join(' ');
+
+  // Check if the person's name parts appear in the emphasized text
+  const namePartsInEm = nameParts.filter(p => emText.includes(p));
+  if (namePartsInEm.length === nameParts.length) {
+    score += 30; // Full name match in highlights
+    reasons.push('full name in highlights');
+  } else if (namePartsInEm.length > 0) {
+    score += 15; // Partial match
+    reasons.push('partial name in highlights');
+  } else {
+    score -= 20; // Name not in highlighted text at all
+    reasons.push('name not in highlighted terms');
+  }
+
+  // 3. Check for spam / incidental content indicators
+  const spamKeywords = [
+    'unsubscribe', 'newsletter', 'subscription', 'advertisement',
+    'click here', 'opt out', 'mailing list', 'napster', 'spotify',
+    'itunes', 'playlist', 'album art', 'new music', 'top songs',
+    'promotional', 'promo', 'coupon', 'discount', 'free trial',
+    'breaking news', 'daily digest', 'automated', 'no-reply',
+    'noreply', 'marketing', 'sponsored'
+  ];
+  const plainHighlights = allHighlights.replace(/<[^>]*>/g, '');
+  const spamHits = spamKeywords.filter(kw => plainHighlights.includes(kw));
+  if (spamHits.length >= 2) {
+    score -= 30;
+    reasons.push(`spam indicators: ${spamHits.slice(0, 3).join(', ')}`);
+  } else if (spamHits.length === 1) {
+    score -= 15;
+    reasons.push(`possible spam: ${spamHits[0]}`);
+  }
+
+  // 4. Legal/case-related content boosts relevance
+  const legalKeywords = [
+    'deposition', 'testimony', 'subpoena', 'flight log', 'passenger',
+    'witness', 'affidavit', 'indictment', 'grand jury', 'complaint',
+    'massage', 'victim', 'minor', 'underage', 'recruit'
+  ];
+  const legalHits = legalKeywords.filter(kw => plainHighlights.includes(kw));
+  if (legalHits.length >= 2) {
+    score += 20;
+    reasons.push(`legal context: ${legalHits.slice(0, 3).join(', ')}`);
+  } else if (legalHits.length === 1) {
+    score += 10;
+    reasons.push(`legal context: ${legalHits[0]}`);
+  }
+
+  // Clamp
+  score = Math.max(0, Math.min(100, score));
+
+  return { score, reason: reasons.join('; ') };
+}
+
+/**
+ * Search DBpedia for people matching a query.
+ *
+ * @param {string} query - name to search
+ * @param {number} [maxResults=12] - max results to return
+ * @returns {Promise<Array>}
+ */
+async function searchDBpediaPeople(query, maxResults = 12) {
+  if (!query || query.trim().length < 2) return [];
+
+  const url = `https://lookup.dbpedia.org/api/search?format=JSON&query=${encodeURIComponent(query.trim())}&typeName=Person&maxResults=${maxResults}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const docs = data.docs || [];
+
+    return docs.map(doc => ({
+      label: stripHTML(doc.label?.[0] || 'Unknown'),
+      comment: stripHTML(doc.comment?.[0] || ''),
+      types: (doc.typeName || []).filter(t => t !== 'Agent').join(', '),
+      resource: doc.resource?.[0] || '',
+      wikiLink: (doc.resource?.[0] || '').replace('http://dbpedia.org/resource/', 'https://en.wikipedia.org/wiki/')
+    }));
+  } catch (error) {
+    console.error('DBpedia search failed:', error);
+    return [];
+  }
+}
+
+/* ── Utility helpers ────────────────────────── */
+
+function stripHTML(str) {
+  return str.replace(/<[^>]*>/g, '');
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function truncateText(str, max) {
+  if (!str || str.length <= max) return str || '';
+  return str.substring(0, max) + '…';
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function formatDate(isoString) {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return isoString;
+  }
+}
+

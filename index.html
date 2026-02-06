@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epstein Files Search - Searchable Database of Public Records</title>
-    <meta name="description" content="Search the Epstein files and flight logs. Comprehensive, searchable database of publicly available court documents and records.">
-    <meta name="keywords" content="Epstein files, Epstein documents, flight logs, Jeffrey Epstein, court records, public documents">
+    <title>Epstein Files — People Search | Cross-Reference Public Figures</title>
+    <meta name="description" content="Search for any public figure via DBpedia and instantly check whether they appear in the DOJ Epstein court documents and records.">
+    <meta name="keywords" content="Epstein files, people search, DBpedia, public figures, court records, DOJ documents, Jeffrey Epstein">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://epsteinfilesearch.com/">
+    <meta property="og:title" content="Epstein Files — People Search">
+    <meta property="og:description" content="Cross-reference any public figure against 115,000+ Epstein court documents from the DOJ EFTA release.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://epsteinfilesearch.com/">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -14,71 +20,73 @@
 <body>
     <header>
         <div class="header-content">
-            <h1>Epstein Files</h1>
-            <p class="subtitle">Searchable Public Records Database</p>
+            <h1><a href="index.html">Epstein Files</a></h1>
+            <p class="subtitle">People Search</p>
         </div>
+        <nav class="header-nav" aria-label="Main navigation">
+            <a href="index.html" class="active" aria-current="page">People</a>
+            <a href="documents.html">Documents</a>
+            <a href="checker.html">Checker</a>
+        </nav>
     </header>
 
     <main class="search-container">
-        <div class="search-box-wrapper">
-            <span class="search-icon">⌕</span>
-            <input 
-                type="text" 
-                id="searchInput" 
-                placeholder="Search by name, organization, or location..."
-                autocomplete="off"
-            >
-        </div>
+        <section class="page-intro" aria-label="Page introduction">
+            <h2>Cross-Reference Public Figures</h2>
+            <p>Search for any known person via <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a>. Each result is checked against the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein files</a> — <span class="legend-found">red</span> if found, <span class="legend-incidental">orange</span> if incidental, <span class="legend-clear">green</span> if not.</p>
+        </section>
 
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number" id="totalRecords">0</div>
-                <div class="stat-label">Total Records</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="resultsCount">0</div>
-                <div class="stat-label">Search Results</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="documentsCount">0</div>
-                <div class="stat-label">Source Documents</div>
+        <div class="search-bar">
+            <div class="search-box-wrapper">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <input
+                    type="text"
+                    id="searchInput"
+                    role="searchbox"
+                    aria-label="Search for a person"
+                    placeholder="Search for a person (e.g. Bill Gates)…"
+                    autocomplete="off"
+                >
             </div>
         </div>
 
-        <div class="filters">
-            <div class="filter-group">
-                <label class="filter-label" for="categoryFilter">Category</label>
-                <select id="categoryFilter">
-                    <option value="all">All Categories</option>
-                    <option value="flight-log">Flight Logs</option>
-                    <option value="court-document">Court Documents</option>
-                    <option value="witness">Witness Testimony</option>
-                    <option value="associate">Known Associate</option>
-                </select>
+        <div class="stats" id="statsBar" style="display:none">
+            <div class="stat-card">
+                <span class="stat-number" id="resultsCount">0</span>
+                <span class="stat-label">People Found</span>
             </div>
-            <div class="filter-group">
-                <label class="filter-label" for="sortBy">Sort By</label>
-                <select id="sortBy">
-                    <option value="name-asc">Name (A-Z)</option>
-                    <option value="name-desc">Name (Z-A)</option>
-                    <option value="mentions-desc">Most Mentions</option>
-                    <option value="mentions-asc">Least Mentions</option>
-                </select>
+            <div class="stat-card">
+                <span class="stat-number" id="checkedCount">0</span>
+                <span class="stat-label">Checked</span>
             </div>
         </div>
 
-        <div id="results"></div>
+        <div id="results">
+            <div class="search-prompt">
+                <h2>Search for Anyone</h2>
+                <p>Type a name to find people via DBpedia and cross-reference them against the Epstein files.</p>
+                <div class="suggested-searches">
+                    <p>Try searching for:</p>
+                    <div class="search-suggestions">
+                        <button class="suggestion-btn" data-query="Bill Clinton">Bill Clinton</button>
+                        <button class="suggestion-btn" data-query="Prince Andrew">Prince Andrew</button>
+                        <button class="suggestion-btn" data-query="Donald Trump">Donald Trump</button>
+                        <button class="suggestion-btn" data-query="Bill Gates">Bill Gates</button>
+                        <button class="suggestion-btn" data-query="Elon Musk">Elon Musk</button>
+                        <button class="suggestion-btn" data-query="Stephen Hawking">Stephen Hawking</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer>
         <p>This database contains publicly available information from court documents and records.</p>
-        <p style="margin-top: 0.5rem; font-size: 0.85rem;"><strong>Disclaimer:</strong> There is no guarantee for the correctness of this information. Use at your own discretion.</p>
-        <p>If you believe any information is inaccurate, please contact: <a href="mailto:hangoebl.j@gmail.com">hangoebl.j@gmail.com</a></p>
-        <p>Data sources: <a href="#" target="_blank">Court Records</a> | <a href="#" target="_blank">Public Documents</a> | <a href="#" target="_blank">Flight Logs</a></p>
-        <p style="margin-top: 1rem; font-size: 0.85rem;">Last updated: January 2025</p>
+        <p class="disclaimer"><strong>Disclaimer:</strong> Appearance in these files does not imply wrongdoing. There is no guarantee for the correctness of this information. Use at your own discretion.</p>
+        <p>Data sources: <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein Library</a> | <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a></p>
+        <p class="last-updated">Last updated: February 2026</p>
     </footer>
 
-    <script src="data.js"></script>
     <script src="data-api.js"></script>
     <script src="app.js"></script>
 </body>

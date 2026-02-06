@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Search — Epstein Files | DOJ EFTA Records</title>
+    <meta name="description" content="Search through 115,000+ Epstein court documents and records from the DOJ EFTA release. Full-text search with highlighted results.">
+    <meta name="keywords" content="Epstein documents, DOJ EFTA, court records, document search, Jeffrey Epstein files, PDF search">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://epsteinfilesearch.com/documents.html">
+    <meta property="og:title" content="Document Search — Epstein Files">
+    <meta property="og:description" content="Full-text search across 115,000+ Epstein court documents from the DOJ EFTA release.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://epsteinfilesearch.com/documents.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1><a href="index.html">Epstein Files</a></h1>
+            <p class="subtitle">Document Search</p>
+        </div>
+        <nav class="header-nav" aria-label="Main navigation">
+            <a href="index.html">People</a>
+            <a href="documents.html" class="active" aria-current="page">Documents</a>
+            <a href="checker.html">Checker</a>
+        </nav>
+    </header>
+
+    <main class="search-container">
+        <div class="search-bar">
+            <div class="search-box-wrapper">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <input
+                    type="text"
+                    id="searchInput"
+                    role="searchbox"
+                    aria-label="Search documents"
+                    placeholder="Search documents…"
+                    autocomplete="off"
+                >
+            </div>
+        </div>
+
+        <div class="stats" id="statsBar" style="display:none">
+            <div class="stat-card">
+                <span class="stat-number" id="totalHits">0</span>
+                <span class="stat-label">Total Hits</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="uniqueFiles">0</span>
+                <span class="stat-label">Unique Files</span>
+            </div>
+        </div>
+
+        <div id="results">
+            <div class="search-prompt">
+                <h2>Search the Epstein Files</h2>
+                <p>Enter a search term to find documents from the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ EFTA release</a>.</p>
+                <div class="suggested-searches">
+                    <p>Try searching for:</p>
+                    <div class="search-suggestions">
+                        <button class="suggestion-btn" data-query="flight log">Flight Logs</button>
+                        <button class="suggestion-btn" data-query="deposition">Depositions</button>
+                        <button class="suggestion-btn" data-query="virgin islands">Virgin Islands</button>
+                        <button class="suggestion-btn" data-query="palm beach">Palm Beach</button>
+                        <button class="suggestion-btn" data-query="massage">Massage</button>
+                        <button class="suggestion-btn" data-query="little black book">Black Book</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pagination" class="pagination" style="display:none"></div>
+    </main>
+
+    <footer>
+        <p>This database contains publicly available information from court documents and records.</p>
+        <p class="disclaimer"><strong>Disclaimer:</strong> There is no guarantee for the correctness of this information. Use at your own discretion.</p>
+        <p>Data sources: <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein Library</a></p>
+        <p class="last-updated">Last updated: February 2026</p>
+    </footer>
+
+    <script src="data-api.js"></script>
+    <script>
+    // Document Search Page
+    class DocumentSearchPage {
+        constructor() {
+            this.searchInput = document.getElementById('searchInput');
+            this.resultsContainer = document.getElementById('results');
+            this.paginationContainer = document.getElementById('pagination');
+            this.statsBar = document.getElementById('statsBar');
+            this.debounceTimer = null;
+            this.currentQuery = '';
+            this.currentPage = 1;
+
+            this.init();
+        }
+
+        init() {
+            this.searchInput.addEventListener('input', () => this.onInput());
+            this.bindSuggestions();
+
+            // Pre-fill from query param
+            const params = new URLSearchParams(window.location.search);
+            const q = params.get('q');
+            const p = parseInt(params.get('page')) || 1;
+            if (q) {
+                this.searchInput.value = q;
+                this.currentPage = p;
+                this.performSearch(q, p);
+            } else {
+                setTimeout(() => this.searchInput.focus(), 100);
+            }
+        }
+
+        bindSuggestions() {
+            document.querySelectorAll('.suggestion-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.searchInput.value = btn.dataset.query;
+                    this.currentPage = 1;
+                    this.performSearch(btn.dataset.query, 1);
+                });
+            });
+        }
+
+        onInput() {
+            clearTimeout(this.debounceTimer);
+            const query = this.searchInput.value.trim();
+
+            if (!query) {
+                this.showPrompt();
+                return;
+            }
+
+            this.debounceTimer = setTimeout(() => {
+                this.currentPage = 1;
+                this.performSearch(query, 1);
+            }, 300);
+        }
+
+        showPrompt() {
+            this.statsBar.style.display = 'none';
+            this.paginationContainer.style.display = 'none';
+            this.resultsContainer.innerHTML = `
+                <div class="search-prompt">
+                    <h2>Search the Epstein Files</h2>
+                    <p>Enter a search term to find documents from the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ EFTA release</a>.</p>
+                    <div class="suggested-searches">
+                        <p>Try searching for:</p>
+                        <div class="search-suggestions">
+                            <button class="suggestion-btn" data-query="flight log">Flight Logs</button>
+                            <button class="suggestion-btn" data-query="deposition">Depositions</button>
+                            <button class="suggestion-btn" data-query="virgin islands">Virgin Islands</button>
+                            <button class="suggestion-btn" data-query="palm beach">Palm Beach</button>
+                            <button class="suggestion-btn" data-query="massage">Massage</button>
+                            <button class="suggestion-btn" data-query="little black book">Black Book</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            this.bindSuggestions();
+        }
+
+        async performSearch(query, page) {
+            this.currentQuery = query;
+            this.currentPage = page;
+
+            // Update URL without reload
+            const url = new URL(window.location);
+            url.searchParams.set('q', query);
+            if (page > 1) {
+                url.searchParams.set('page', page);
+            } else {
+                url.searchParams.delete('page');
+            }
+            window.history.replaceState({}, '', url);
+
+            // Loading state
+            this.resultsContainer.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Searching for "${escapeHTML(query)}"…</p>
+                </div>
+            `;
+            this.paginationContainer.style.display = 'none';
+
+            try {
+                const result = await searchDOJ(query, page);
+
+                // Update stats
+                this.statsBar.style.display = '';
+                document.getElementById('totalHits').textContent = result.totalHits.toLocaleString();
+                document.getElementById('uniqueFiles').textContent = result.uniqueFiles.toLocaleString();
+
+                if (result.hits.length === 0) {
+                    this.resultsContainer.innerHTML = `
+                        <div class="no-results">
+                            <h2>No Documents Found</h2>
+                            <p>No documents matching "${escapeHTML(query)}"</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.renderResults(result);
+                this.renderPagination(result.totalHits, page);
+
+            } catch (error) {
+                console.error('Search failed:', error);
+                this.resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        <h2>Search Failed</h2>
+                        <p>Could not connect to the DOJ API. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        renderResults(result) {
+            const html = `
+                <div class="api-results-header">
+                    <p>Found <strong>${result.totalHits.toLocaleString()}</strong> hits across <strong>${result.uniqueFiles.toLocaleString()}</strong> files for "<strong>${escapeHTML(result.query)}</strong>"</p>
+                </div>
+                <div class="document-results-list">
+                    ${result.hits.map((hit, index) => `
+                        <div class="document-result-card" style="animation-delay: ${index * 0.03}s">
+                            <div class="document-result-header">
+                                <div class="document-result-title">
+                                    <span class="document-file-name">${escapeHTML(hit.fileName)}</span>
+                                    <span class="document-score">Score: ${hit.score.toFixed(1)}</span>
+                                </div>
+                                <div class="document-result-meta">
+                                    ${hit.startPage ? `<span class="doc-meta-item">Pages ${hit.startPage}–${hit.endPage || hit.startPage}</span>` : ''}
+                                    <span class="doc-meta-item">${formatFileSize(hit.fileSize)}</span>
+                                    <span class="doc-meta-item">${hit.totalWords.toLocaleString()} words</span>
+                                    ${hit.processedAt ? `<span class="doc-meta-item">${formatDate(hit.processedAt)}</span>` : ''}
+                                </div>
+                            </div>
+                            ${hit.highlights.length > 0 ? `
+                                <div class="document-highlights">
+                                    ${hit.highlights.map(h => `<p class="document-highlight-text">${h}</p>`).join('')}
+                                </div>
+                            ` : ''}
+                            <div class="document-result-actions">
+                                ${hit.fileUrl ? `<a href="${escapeAttr(hit.fileUrl)}" target="_blank" rel="noopener noreferrer" class="doc-view-btn">View PDF ↗</a>` : ''}
+                                <span class="document-key">${escapeHTML(hit.key)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            this.resultsContainer.innerHTML = html;
+        }
+
+        renderPagination(totalHits, currentPage) {
+            // DOJ API returns ~20 results per page, 1-based
+            const totalPages = Math.ceil(totalHits / 20);
+            if (totalPages <= 1) {
+                this.paginationContainer.style.display = 'none';
+                return;
+            }
+
+            // Show max 9 page buttons centered around current
+            const maxButtons = 9;
+            let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let end = Math.min(totalPages + 1, start + maxButtons);
+            if (end - start < maxButtons) {
+                start = Math.max(1, end - maxButtons);
+            }
+
+            let html = '';
+
+            if (currentPage > 1) {
+                html += `<button class="page-btn" data-page="${currentPage - 1}">← Prev</button>`;
+            }
+
+            for (let i = start; i < end; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            }
+
+            if (currentPage < totalPages) {
+                html += `<button class="page-btn" data-page="${currentPage + 1}">Next →</button>`;
+            }
+
+            this.paginationContainer.innerHTML = html;
+            this.paginationContainer.style.display = '';
+
+            // Bind page clicks
+            this.paginationContainer.querySelectorAll('.page-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const page = parseInt(btn.dataset.page);
+                    this.performSearch(this.currentQuery, page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        }
+    }
+
+    // Initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => new DocumentSearchPage());
+    } else {
+        new DocumentSearchPage();
+    }
+
+    // Keyboard shortcut: Cmd/Ctrl+K to focus search
+    document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            const input = document.getElementById('searchInput');
+            if (input) { input.focus(); input.select(); }
+        }
+    });
+
+    // Header scroll shrink
+    window.addEventListener('scroll', () => {
+        const header = document.querySelector('header');
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+    </script>
+</body>
+</html>
