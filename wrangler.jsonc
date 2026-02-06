@@ -1,5 +1,5 @@
 {
-  "name": "epstein-records",
+  "name": "epstein-check",
   "compatibility_date": "2026-02-06",
   "main": "src/worker.js",
   "assets": {
