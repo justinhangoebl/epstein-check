@@ -1,3 +1,18 @@
+/* DOJ endpoint unreachable = GREY */
+.person-card-unreachable {
+    border-color: #888;
+    background: repeating-linear-gradient(135deg, var(--card-bg) 0%, #222 100%);
+    opacity: 0.5;
+    filter: grayscale(0.7);
+    cursor: not-allowed;
+}
+.person-card-unreachable .person-status-badge.unreachable {
+    color: #888;
+    font-weight: 700;
+}
+.unreachable-count {
+    color: #888;
+}
 /* ============================================================
    Epstein Files — Global Stylesheet
    Brutalist-editorial design. See STYLE_GUIDE.md for tokens.

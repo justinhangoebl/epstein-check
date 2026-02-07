@@ -51,7 +51,45 @@ async function searchDOJ(query, page = 1) {
 
     // 2) Fallback: our self-hosted Browser Rendering proxy
     if (!response) {
-      response = await fetch(browserUrl);
+      try {
+        response = await fetch(browserUrl);
+      } catch (e) {
+        console.warn('Browser rendering unreachable:', e.message);
+        response = null;
+      }
+    }
+
+    // 3) Fallback: analytics.dugganusa.com API
+    if (!response) {
+      const dugganUrl = `https://analytics.dugganusa.com/api/v1/search?q=${encodeURIComponent(query.trim())}&indexes=epstein_files`;
+      response = await fetch(dugganUrl);
+      if (!response.ok) throw new Error(`Duggan API error: ${response.status}`);
+      const data = await response.json();
+      // Adapt Duggan API response to expected format
+      const rawHits = data?.results || [];
+      const totalValue = data?.total || rawHits.length;
+      const uniqueFiles = rawHits.length;
+      const hits = rawHits.map(h => ({
+        documentId: h.documentId || '',
+        fileName: h.fileName || '',
+        fileUrl: h.fileUrl || '',
+        contentType: h.contentType || '',
+        fileSize: h.fileSize || 0,
+        totalWords: h.totalWords || 0,
+        totalCharacters: h.totalCharacters || 0,
+        startPage: h.startPage || null,
+        endPage: h.endPage || null,
+        processedAt: h.processedAt || '',
+        key: h.key || '',
+        highlights: h.highlights || [],
+        score: h.score || 0
+      }));
+      return {
+        hits,
+        totalHits: totalValue,
+        uniqueFiles,
+        query: query.trim()
+      };
     }
 
     if (!response.ok) throw new Error(`DOJ API error: ${response.status}`);
