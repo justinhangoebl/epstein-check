@@ -86,21 +86,34 @@ async function searchDOJ(query, page = 1) {
       const rawHits = data?.hits || [];
       const totalValue = data?.totalHits || rawHits.length;
       const uniqueFiles = rawHits.length;
-      const hits = rawHits.map(h => ({
-        documentId: h.efta_id || h.documentId || h.id || '',
-        fileName: h.fileName || h.file_path?.split('/').pop() || '',
-        fileUrl: h.fileUrl || h.file_path ? `/documents${h.file_path}` : '',
-        contentType: h.contentType || '',
-        fileSize: h.fileSize || h.char_count || 0,
-        totalWords: h.totalWords || 0,
-        totalCharacters: h.totalCharacters || h.char_count || 0,
-        startPage: h.startPage || null,
-        endPage: h.endPage || null,
-        processedAt: h.indexed_at || '',
-        key: h.key || '',
-        highlights: h.highlights || (h.content_preview ? [h.content_preview] : []),
-        score: h.score || 0
-      }));
+      const hits = rawHits.map(h => {
+        // Build justice.gov link if file_path exists
+        let fileUrl = '';
+        if (h.file_path) {
+          // Normalize path for justice.gov
+          let datasetMatch = h.file_path.match(/\/([Dd]ataset ?\d+|VOL\d+)/);
+          let dataset = datasetMatch ? datasetMatch[1].replace(' ', '') : 'DataSet1';
+          let fileName = h.file_path.split('/').pop();
+          fileUrl = `https://www.justice.gov/epstein/files/${dataset}/${fileName}`;
+        } else if (h.fileUrl) {
+          fileUrl = h.fileUrl;
+        }
+        return {
+          documentId: h.efta_id || h.documentId || h.id || '',
+          fileName: h.fileName || h.file_path?.split('/').pop() || '',
+          fileUrl,
+          contentType: h.contentType || '',
+          fileSize: h.fileSize || h.char_count || 0,
+          totalWords: h.totalWords || 0,
+          totalCharacters: h.totalCharacters || h.char_count || 0,
+          startPage: h.startPage || null,
+          endPage: h.endPage || null,
+          processedAt: h.indexed_at || '',
+          key: h.key || '',
+          highlights: h.highlights || (h.content_preview ? [h.content_preview] : []),
+          score: h.score || 0
+        };
+      });
       return {
         hits,
         totalHits: totalValue,
