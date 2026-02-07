@@ -257,6 +257,13 @@ async function handleProxy(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Redirect apex → www
+    if (url.hostname === "epstein-check.org") {
+      url.hostname = "www.epstein-check.org"
+      return Response.redirect(url.toString(), 301)
+    }
+
+
 
     // Route /api/proxy requests to the CORS proxy handler
     if (url.pathname === PROXY_PATH) {
