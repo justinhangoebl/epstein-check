@@ -92,12 +92,12 @@ async function searchDOJ(query, page = 1) {
         if (h.file_path) {
           // Normalize path for justice.gov
           let datasetMatch = h.file_path.match(/\/([Dd]ataset ?\d+|VOL\d+)/);
-          let dataset = 'Dataset 1';
+          let dataset = 'DataSet 1';
           if (datasetMatch) {
             let ds = datasetMatch[1];
             // Always 'Dataset X' with space
             let dsNum = ds.match(/\d+/);
-            if (dsNum) dataset = `Dataset ${dsNum[0]}`;
+            if (dsNum) dataset = `DataSet ${dsNum[0]}`;
           }
           let fileName = h.file_path.split('/').pop();
           fileUrl = `https://www.justice.gov/epstein/files/${dataset}/${fileName}`;
