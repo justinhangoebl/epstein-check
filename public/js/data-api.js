@@ -89,7 +89,8 @@ async function searchDOJ(query, page = 1) {
         hits,
         totalHits: totalValue,
         uniqueFiles,
-        query: query.trim()
+        query: query.trim(),
+        fallback: 'duggan'
       };
     }
 

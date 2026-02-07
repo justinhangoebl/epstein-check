@@ -187,33 +187,36 @@ class PeopleSearch {
 
         card.classList.remove('person-card-checking');
         const badge = card.querySelector('.person-status-badge');
-            const status = result.error ? 'unreachable' : (result.status || (result.found ? 'found' : 'clear'));
-
-            if (status === 'found') {
-                card.classList.add('person-card-found');
-                badge.className = 'person-status-badge found';
-                badge.innerHTML = '⚠';
-                countEl.textContent = `${result.totalHits.toLocaleString()} mentions`;
-                countEl.classList.add('found-count');
-            } else if (status === 'incidental') {
-                card.classList.add('person-card-incidental');
-                badge.className = 'person-status-badge incidental';
-                badge.innerHTML = '~';
-                countEl.textContent = `${result.totalHits.toLocaleString()} (incidental)`;
-                countEl.classList.add('incidental-count');
-            } else if (status === 'unreachable') {
-                card.classList.add('person-card-unreachable');
-                badge.className = 'person-status-badge unreachable';
-                badge.innerHTML = '…';
-                countEl.textContent = 'Endpoint unreachable';
-                countEl.classList.add('unreachable-count');
-            } else {
-                card.classList.add('person-card-clear');
-                badge.className = 'person-status-badge clear';
-                badge.innerHTML = '✓';
-                countEl.textContent = 'Not found';
-                countEl.classList.add('clear-count');
-            }
+        let status = result.error ? 'unreachable' : (result.status || (result.found ? 'found' : 'clear'));
+        // If fallback was used and no results, mark as unreachable
+        if (result.error || (result.totalHits === 0 && result.status === 'clear' && result.fallback === 'duggan')) {
+            status = 'unreachable';
+        }
+        if (status === 'found') {
+            card.classList.add('person-card-found');
+            badge.className = 'person-status-badge found';
+            badge.innerHTML = '⚠';
+            countEl.textContent = `${result.totalHits.toLocaleString()} mentions`;
+            countEl.classList.add('found-count');
+        } else if (status === 'incidental') {
+            card.classList.add('person-card-incidental');
+            badge.className = 'person-status-badge incidental';
+            badge.innerHTML = '~';
+            countEl.textContent = `${result.totalHits.toLocaleString()} (incidental)`;
+            countEl.classList.add('incidental-count');
+        } else if (status === 'unreachable') {
+            card.classList.add('person-card-unreachable');
+            badge.className = 'person-status-badge unreachable';
+            badge.innerHTML = '…';
+            countEl.textContent = 'Endpoint unreachable or no results';
+            countEl.classList.add('unreachable-count');
+        } else {
+            card.classList.add('person-card-clear');
+            badge.className = 'person-status-badge clear';
+            badge.innerHTML = '✓';
+            countEl.textContent = 'Not found';
+            countEl.classList.add('clear-count');
+        }
     }
 
     openModal(person) {

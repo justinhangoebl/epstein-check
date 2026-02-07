@@ -1,3 +1,29 @@
+/* Unreachable = GREY */
+.person-card-unreachable {
+    border-color: #888;
+    background: linear-gradient(135deg, var(--card-bg) 0%, #222 100%);
+    opacity: 0.6;
+}
+.person-card-unreachable:hover {
+    box-shadow: 0 4px 20px rgba(128,128,128,0.2);
+    border-color: #888;
+}
+.person-card-unreachable::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background: #888;
+}
+.person-status-badge.unreachable {
+    color: #888;
+    font-weight: 700;
+}
+.person-file-count.unreachable-count {
+    color: #888;
+}
 /* DOJ endpoint unreachable = GREY */
 .person-card-unreachable {
     border-color: #888;
