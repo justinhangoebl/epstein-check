@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7222520064986105"
-     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7222520064986105"
+     crossorigin="anonymous"></script>
     <title>Epstein Files — People Search | Cross-Reference Public Figures</title>
     <meta name="description" content="Search for any public figure via DBpedia and instantly check whether they appear in the DOJ Epstein court documents and records. Cross-reference 115,000+ files.">
     <meta name="keywords" content="Epstein files, people search, DBpedia, public figures, court records, DOJ documents, Jeffrey Epstein, EFTA, cross-reference, flight logs, court filings">
@@ -13,6 +13,8 @@
     <meta name="theme-color" content="#0a0a0a">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="manifest" href="/site.webmanifest">
     <link rel="canonical" href="https://epstein-check.org/">
 
     <!-- Open Graph -->
@@ -22,11 +24,15 @@
     <meta property="og:url" content="https://epstein-check.org/">
     <meta property="og:site_name" content="Epstein File Search">
     <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="https://epstein-check.org/og-image.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Epstein Files — People Search">
     <meta name="twitter:description" content="Cross-reference any public figure against 115,000+ Epstein court documents from the DOJ EFTA release.">
+    <meta name="twitter:image" content="https://epstein-check.org/og-image.svg">
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -42,19 +48,27 @@
         "isPartOf": {
             "@type": "WebSite",
             "name": "Epstein File Search",
-            "url": "https://epstein-check.org"
+            "url": "https://epstein-check.org",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://epstein-check.org/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
         }
     }
     </script>
+    <link rel="dns-prefetch" href="https://api.cors.lol">
+    <link rel="dns-prefetch" href="https://lookup.dbpedia.org">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <header>
         <div class="header-content">
-            <h1><a href="index.html">Epstein Files</a></h1>
+            <h1><a href="/">Epstein Files</a></h1>
             <p class="subtitle">People Search</p>
             <p class="subtitle">Search for any known person via <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a>. Each result is checked against the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein files</a> — <span class="legend-found">red</span> if found, <span class="legend-incidental">orange</span> if incidental, <span class="legend-clear">green</span> if not. Check the resulting files to confirm and form your own opinion.</p>
 
@@ -66,7 +80,7 @@
         </nav>
     </header>
 
-    <main class="search-container">
+    <main id="main-content" class="search-container">
 
         <div class="search-bar">
             <div class="search-box-wrapper">
@@ -118,7 +132,7 @@
         <p>Data sources: <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein Library</a> | <a href="https://www.dbpedia.org" target="_blank" rel="noopener noreferrer">DBpedia</a> | Last updated: February 2026</p>
     </footer>
 
-    <script src="js/data-api.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/data-api.js" defer></script>
+    <script src="js/app.js" defer></script>
 </body>
 </html>

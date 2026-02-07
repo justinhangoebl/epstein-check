@@ -1,0 +1,16 @@
+{
+    "name": "Epstein File Search",
+    "short_name": "Epstein Files",
+    "description": "Cross-reference public figures against 115,000+ DOJ Epstein court documents.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#0a0a0a",
+    "icons": [
+        {
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

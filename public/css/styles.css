@@ -3,6 +3,24 @@
    Brutalist-editorial design. See STYLE_GUIDE.md for tokens.
    ============================================================ */
 
+/* Skip-to-content link (accessibility) */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    z-index: 9999;
+    text-decoration: none;
+    transition: top 0.2s;
+}
+.skip-link:focus {
+    top: 0;
+}
+
 :root {
     --primary-bg: #0a0a0a;
     --secondary-bg: #1a1a1a;
@@ -1208,6 +1226,109 @@ footer p { margin-bottom: 0.5rem; }
 footer p:last-child { margin-bottom: 0; }
 footer .disclaimer { font-size: 0.85rem; }
 footer .last-updated { font-size: 0.85rem; }
+
+/* ── Ads ─────────────────────────────────────── */
+
+/* Desktop sidebar ads — positioned in the gutters outside the
+   1400px content area, only visible on wide screens. */
+.sidebar-ad {
+    display: none;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    width: 160px;
+}
+
+.sidebar-ad--left { left: calc((100vw - 1400px) / 2 / 2 - 80px); }
+.sidebar-ad--right { right: calc((100vw - 1400px) / 2 / 2 - 80px); }
+
+.ad-slot--sidebar {
+    width: 160px;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ad-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.ad-placeholder {
+    width: 160px;
+    height: 600px;
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    opacity: 0.4;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Show sidebar ads only on screens wide enough to have gutters
+   (content is 1400px + need ~200px per side for 160px ad + gap) */
+@media (min-width: 1800px) {
+    .sidebar-ad {
+        display: block;
+    }
+}
+
+/* Mobile bottom banner — fixed to bottom, only on small screens */
+.mobile-ad-banner {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    background: var(--primary-bg);
+    border-top: 1px solid var(--border);
+    padding: 0.35rem 0;
+}
+
+.ad-slot--banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.ad-slot--banner .ad-placeholder {
+    width: 320px;
+    height: 50px;
+    min-height: auto;
+    border: 1px dashed var(--border);
+}
+
+/* Show mobile banner on screens up to 1024px */
+@media (max-width: 1024px) {
+    .mobile-ad-banner {
+        display: block;
+    }
+
+    /* Add bottom padding to footer so it's not hidden behind the banner */
+    footer {
+        padding-bottom: 5rem;
+    }
+}
+
+/* Hide mobile banner on desktop, hide sidebar ads on mobile */
+@media (min-width: 1025px) {
+    .mobile-ad-banner {
+        display: none;
+    }
+}
 
 /* ── Animations ──────────────────────────────── */
 

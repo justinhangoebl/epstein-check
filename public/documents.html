@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7222520064986105"
-     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7222520064986105"
+     crossorigin="anonymous"></script>
     <title>Document Search — Epstein Files | Search 115,000+ DOJ EFTA Records</title>
     <meta name="description" content="Full-text search through 115,000+ Epstein court documents and records from the DOJ EFTA release. Find depositions, flight logs, court filings, and more with highlighted results.">
     <meta name="keywords" content="Epstein documents, DOJ EFTA, court records, document search, Jeffrey Epstein files, PDF search, depositions, flight logs, court filings, sealed documents">
@@ -13,6 +13,8 @@
     <meta name="theme-color" content="#0a0a0a">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="manifest" href="/site.webmanifest">
     <link rel="canonical" href="https://epstein-check.org/documents.html">
 
     <!-- Open Graph -->
@@ -22,11 +24,15 @@
     <meta property="og:url" content="https://epstein-check.org/documents.html">
     <meta property="og:site_name" content="Epstein File Search">
     <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="https://epstein-check.org/og-image.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Document Search — Epstein Files">
     <meta name="twitter:description" content="Full-text search across 115,000+ Epstein court documents from the DOJ EFTA release.">
+    <meta name="twitter:image" content="https://epstein-check.org/og-image.svg">
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -42,19 +48,26 @@
         "isPartOf": {
             "@type": "WebSite",
             "name": "Epstein File Search",
-            "url": "https://epstein-check.org"
+            "url": "https://epstein-check.org",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://epstein-check.org/documents.html?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
         }
     }
     </script>
+    <link rel="dns-prefetch" href="https://api.cors.lol">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <header>
         <div class="header-content">
-            <h1><a href="index.html">Epstein Files</a></h1>
+            <h1><a href="/">Epstein Files</a></h1>
             <p class="subtitle">Document Search</p>
             <p class="subtitle">Search through 115,000+ Epstein court documents from the <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ EFTA release</a>. Full-text search with highlighted results. Check the resulting files to confirm and form your own opinion.</p>
 
@@ -66,7 +79,7 @@
         </nav>
     </header>
 
-    <main class="search-container">
+    <main id="main-content" class="search-container">
         <div class="search-bar">
             <div class="search-box-wrapper">
                 <span class="search-icon" aria-hidden="true">⌕</span>
@@ -119,7 +132,7 @@
         <p>Data sources: <a href="https://www.justice.gov/epstein" target="_blank" rel="noopener noreferrer">DOJ Epstein Library</a> | Last updated: February 2026</p>
     </footer>
 
-    <script src="js/data-api.js"></script>
+    <script src="js/data-api.js" defer></script>
     <script>
     // Document Search Page
     class DocumentSearchPage {
