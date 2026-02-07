@@ -64,24 +64,25 @@ async function searchDOJ(query, page = 1) {
       const dugganUrl = `https://analytics.dugganusa.com/api/v1/search?q=${encodeURIComponent(query.trim())}&indexes=epstein_files`;
       response = await fetch(dugganUrl);
       if (!response.ok) throw new Error(`Duggan API error: ${response.status}`);
-      const data = await response.json();
-      // Adapt Duggan API response to expected format
-      const rawHits = data?.results || [];
-      const totalValue = data?.total || rawHits.length;
+      const duggan = await response.json();
+      // Adapt Duggan API response to expected format (success/data/hits/totalHits)
+      const data = duggan?.data || {};
+      const rawHits = data?.hits || [];
+      const totalValue = data?.totalHits || rawHits.length;
       const uniqueFiles = rawHits.length;
       const hits = rawHits.map(h => ({
-        documentId: h.documentId || '',
-        fileName: h.fileName || '',
-        fileUrl: h.fileUrl || '',
+        documentId: h.efta_id || h.documentId || h.id || '',
+        fileName: h.fileName || h.file_path?.split('/').pop() || '',
+        fileUrl: h.fileUrl || h.file_path ? `/documents${h.file_path}` : '',
         contentType: h.contentType || '',
-        fileSize: h.fileSize || 0,
+        fileSize: h.fileSize || h.char_count || 0,
         totalWords: h.totalWords || 0,
-        totalCharacters: h.totalCharacters || 0,
+        totalCharacters: h.totalCharacters || h.char_count || 0,
         startPage: h.startPage || null,
         endPage: h.endPage || null,
-        processedAt: h.processedAt || '',
+        processedAt: h.indexed_at || '',
         key: h.key || '',
-        highlights: h.highlights || [],
+        highlights: h.highlights || (h.content_preview ? [h.content_preview] : []),
         score: h.score || 0
       }));
       return {
