@@ -189,7 +189,7 @@ class PeopleSearch {
         const badge = card.querySelector('.person-status-badge');
         let status = result.error ? 'unreachable' : (result.status || (result.found ? 'found' : 'clear'));
         // If fallback was used and no results, mark as unreachable
-        if (result.error || (result.totalHits === 0 && result.status === 'clear' && result.fallback === 'duggan')) {
+        if (result.error || (result.totalHits === 0 && result.fallback === 'duggan')) {
             status = 'unreachable';
         }
         if (status === 'found') {
@@ -208,7 +208,7 @@ class PeopleSearch {
             card.classList.add('person-card-unreachable');
             badge.className = 'person-status-badge unreachable';
             badge.innerHTML = '…';
-            countEl.textContent = 'Endpoint unreachable or no results';
+            countEl.textContent = result.reason || 'Endpoint unreachable or no results';
             countEl.classList.add('unreachable-count');
         } else {
             card.classList.add('person-card-clear');

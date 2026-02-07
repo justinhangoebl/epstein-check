@@ -50,20 +50,36 @@ async function searchDOJ(query, page = 1) {
     }
 
     // 2) Fallback: our self-hosted Browser Rendering proxy
+    let browserFailed = false;
     if (!response) {
       try {
         response = await fetch(browserUrl);
+        if (response.status === 403 || response.status === 429 || response.status >= 500) {
+          browserFailed = true;
+          response = null;
+        }
       } catch (e) {
         console.warn('Browser rendering unreachable:', e.message);
+        browserFailed = true;
         response = null;
       }
     }
 
     // 3) Fallback: analytics.dugganusa.com API
-    if (!response) {
+    if (!response && browserFailed) {
       const dugganUrl = `https://analytics.dugganusa.com/api/v1/search?q=${encodeURIComponent(query.trim())}&indexes=epstein_files`;
       response = await fetch(dugganUrl);
-      if (!response.ok) throw new Error(`Duggan API error: ${response.status}`);
+      if (!response.ok) {
+        return {
+          hits: [],
+          totalHits: 0,
+          uniqueFiles: 0,
+          query: query.trim(),
+          fallback: 'duggan',
+          error: true,
+          reason: 'Could not reach the DOJ Epstein files API. This result may be incomplete.'
+        };
+      }
       const duggan = await response.json();
       // Adapt Duggan API response to expected format (success/data/hits/totalHits)
       const data = duggan?.data || {};
@@ -90,7 +106,9 @@ async function searchDOJ(query, page = 1) {
         totalHits: totalValue,
         uniqueFiles,
         query: query.trim(),
-        fallback: 'duggan'
+        fallback: 'duggan',
+        error: false,
+        reason: 'Could not reach the DOJ Epstein files API. This result may be incomplete.'
       };
     }
 
