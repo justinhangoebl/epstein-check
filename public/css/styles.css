@@ -253,26 +253,7 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
 }
 
 /* Vertical Banners for Desktop */
-.left-vertical-banner,
-.right-vertical-banner {
-    width: 10%;
-    display: none; /* Hidden by default */
-}
-
-.left-vertical-banner {
-    float: left;
-}
-
-.right-vertical-banner {
-    float: right;
-}
-
-.left-vertical-banner iframe,
-.right-vertical-banner iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
+/* (intentionally left blank, see media query for correct rules) */
 
 /* Desktop: Show vertical banners and adjust layout */
 @media (min-width: 769px) {
@@ -281,8 +262,40 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
         display: block;
     }
     .search-container {
-        float: left;
+        flex: 1 1 0%;
+        min-width: 0;
+        min-height: 400px;
+        display: block;
+    }
+}
+@media (min-width: 769px) {
+    #main-content {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        width: 100%;
+    }
+    .left-vertical-banner,
+    .right-vertical-banner {
+        display: block;
+        width: 10%;
+        min-width: 120px;
+        max-width: 180px;
+        height: 100%;
+    }
+    .search-container {
         width: 80%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    .left-vertical-banner {
+        order: 0;
+    }
+    .search-container {
+        order: 1;
+    }
+    .right-vertical-banner {
+        order: 2;
     }
 }
 
