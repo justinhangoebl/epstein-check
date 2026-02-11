@@ -221,6 +221,7 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
     padding: 1rem 0;
     border-bottom: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.02);
+    display: none; /* Hidden by default */
 }
 
 .banner-ad iframe {
@@ -229,18 +230,76 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
     height: auto;
 }
 
-/* Push Notification Positioning */
-.push-notification, 
-.notification, 
-[class*="push"], 
-[class*="notif"],
-[id*="push"],
-[id*="notif"] {
-    position: fixed !important;
-    bottom: 20px !important;
-    left: 20px !important;
-    right: auto !important;
-    z-index: 9999 !important;
+/* Mobile: Show banner ad at bottom */
+@media (max-width: 768px) {
+    .banner-ad {
+        display: block;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 0;
+        border-top: 1px solid var(--border);
+        background: rgba(10, 10, 10, 0.95);
+        z-index: 1000;
+    }
+    .banner-ad iframe {
+        width: 100%;
+        height: 90px;
+    }
+    body {
+        padding-bottom: 90px;
+    }
+}
+
+/* Vertical Banners for Desktop */
+.left-vertical-banner,
+.right-vertical-banner {
+    position: fixed;
+    top: 0;
+    height: 100%;
+    width: 10%;
+    z-index: 1000;
+    display: none; /* Hidden by default */
+}
+
+.left-vertical-banner {
+    left: 0;
+}
+
+.right-vertical-banner {
+    right: 0;
+}
+
+.left-vertical-banner iframe,
+.right-vertical-banner iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Desktop: Show vertical banners and add margins */
+@media (min-width: 769px) {
+    .left-vertical-banner,
+    .right-vertical-banner {
+        display: block;
+    }
+    body {
+        margin-left: 10%;
+        margin-right: 10%;
+    }
+}
+
+/* Push Notification Positioning - Only on Mobile */
+iframe[src*="nap5k"] {
+    display: none !important; /* Hidden by default */
+}
+
+@media (max-width: 768px) {
+    iframe[src*="nap5k"] {
+        display: block !important;
+        inset: auto 15px 15px auto !important; /* Bottom right on mobile */
+    }
 }
 
 /* ── Search ──────────────────────────────────── */
