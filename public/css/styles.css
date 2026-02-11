@@ -215,6 +215,34 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
     word-break: break-word;
 }
 
+/* Banner Ad */
+.banner-ad {
+    text-align: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.banner-ad iframe {
+    border: none;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Push Notification Positioning */
+.push-notification, 
+.notification, 
+[class*="push"], 
+[class*="notif"],
+[id*="push"],
+[id*="notif"] {
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    right: auto !important;
+    z-index: 9999 !important;
+}
+
 /* ── Search ──────────────────────────────────── */
 
 .search-container {
