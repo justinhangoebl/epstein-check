@@ -255,20 +255,16 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
 /* Vertical Banners for Desktop */
 .left-vertical-banner,
 .right-vertical-banner {
-    position: fixed;
-    top: 0;
-    height: 100%;
     width: 10%;
-    z-index: 1000;
     display: none; /* Hidden by default */
 }
 
 .left-vertical-banner {
-    left: 0;
+    float: left;
 }
 
 .right-vertical-banner {
-    right: 0;
+    float: right;
 }
 
 .left-vertical-banner iframe,
@@ -278,27 +274,15 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
     border: none;
 }
 
-/* Desktop: Show vertical banners and add margins */
+/* Desktop: Show vertical banners and adjust layout */
 @media (min-width: 769px) {
     .left-vertical-banner,
     .right-vertical-banner {
         display: block;
     }
-    body {
-        margin-left: 10%;
-        margin-right: 10%;
-    }
-}
-
-/* Push Notification Positioning - Only on Desktop */
-iframe[style*="z-index: 2147483647"] {
-    display: none !important; /* Hidden by default */
-}
-
-@media (min-width: 769px) {
-    iframe[style*="z-index: 2147483647"] {
-        display: block !important;
-        inset: auto 15px 15px auto !important; /* Bottom right on desktop */
+    .search-container {
+        float: left;
+        width: 80%;
     }
 }
 
@@ -1348,6 +1332,7 @@ footer {
     color: var(--text-secondary);
     font-size: 0.9rem;
     width: 100%;
+    clear: both;
 }
 
 footer p { margin-bottom: 0.5rem; }
