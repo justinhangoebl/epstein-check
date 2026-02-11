@@ -1267,11 +1267,19 @@ footer p { margin-bottom: 0.5rem; }
 footer p:last-child { margin-bottom: 0; }
 footer .disclaimer { font-size: 0.85rem; }
 footer .last-updated { font-size: 0.85rem; }
+
 footer .footer-content {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    footer .footer-content {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }
 
 .flex-1 { flex: 1 1 auto; }
