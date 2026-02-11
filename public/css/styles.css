@@ -290,15 +290,15 @@ h1 a { color: inherit; text-decoration: none; opacity: 1; }
     }
 }
 
-/* Push Notification Positioning - Only on Mobile */
-iframe[src*="nap5k"] {
+/* Push Notification Positioning - Only on Desktop */
+iframe[style*="z-index: 2147483647"] {
     display: none !important; /* Hidden by default */
 }
 
-@media (max-width: 768px) {
-    iframe[src*="nap5k"] {
+@media (min-width: 769px) {
+    iframe[style*="z-index: 2147483647"] {
         display: block !important;
-        inset: auto 15px 15px auto !important; /* Bottom right on mobile */
+        inset: auto 15px 15px auto !important; /* Bottom right on desktop */
     }
 }
 
